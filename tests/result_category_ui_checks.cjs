@@ -1,0 +1,21 @@
+const {_electron}=require('C:/Users/74319/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const fs=require('fs'),path=require('path'),assert=require('assert');const root=path.resolve(__dirname,'..');let app;
+(async()=>{
+ const env={...process.env,COMIC_DATA_DIR:path.join(root,'build/result-category-ui-data')};delete env.ELECTRON_RUN_AS_NODE;
+ app=await _electron.launch({executablePath:'E:/日程提醒/node_modules/electron/dist/electron.exe',args:[process.env.COMIC_TEST_APP||root],env,timeout:90000});
+ const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.locator('.stat-value').first().waitFor({timeout:90000});
+ await page.locator('[data-nav="results"]').first().click();const select=page.getByRole('combobox',{name:'生成文章赛道',exact:true});await select.waitFor();
+ assert.equal(await page.locator('#category-filter').count(),1);
+ const options=await select.locator('option').allTextContents();assert(options.includes('全部赛道（4篇）'));assert(options.includes('生活（2篇）'));assert(options.includes('教育（1篇）'));assert(options.includes('历史赛道（1篇）'));assert(!options.some(x=>x.includes('国际')));
+ await select.selectOption('教育');await page.waitForFunction(()=>pushRows.length===1&&pushRows[0].category==='教育');
+ await page.locator('[data-management="select-filtered"]').click();await page.waitForFunction(()=>pushSelection.size===1);
+ assert.equal((await page.evaluate(()=>window.desktop.api('/results/select',{method:'POST',body:{all_filtered:true,filters:resultQuery()}}))).ids.length,1);
+ await page.locator('[data-management="reset-filters"]').click();await page.waitForFunction(()=>pushRows.length===4&&state.category==='');
+ await select.selectOption('生活');await page.waitForFunction(()=>pushRows.length===2&&pushRows.every(r=>r.category==='生活'));
+ await page.locator('#list-search').fill('历史作品');await page.waitForFunction(()=>state.q==='历史作品'&&pushRows.length===0);
+ assert.equal(await select.inputValue(),'生活');assert((await select.locator('option:checked').innerText()).includes('0篇'));
+ await select.selectOption('历史赛道');await page.waitForFunction(()=>pushRows.length===1&&pushRows[0].category==='历史赛道');
+ await page.locator('[data-management="reset-filters"]').click();await page.waitForFunction(()=>pushRows.length===4);
+ await page.screenshot({path:path.join(root,'build/result-category-ui.png'),fullPage:true});assert.deepEqual(errors,[]);
+ await app.close();app=null;console.log(JSON.stringify({ok:true,visible_label_and_live_counts:true,generated_categories_only:true,legacy_category_selectable:true,filter_selection_and_reset:true,zero_results_keeps_selected_filter:true,external_model_calls:0}));
+})().catch(async e=>{console.error(e);if(app)await app.close().catch(()=>{});process.exitCode=1;});

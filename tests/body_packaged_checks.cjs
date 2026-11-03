@@ -1,0 +1,25 @@
+const {_electron}=require('C:/Users/74319/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const assert=require('assert'),path=require('path'),fs=require('fs');
+const root=path.resolve(__dirname,'..');
+const folder='C:/Users/74319/Desktop/漫画文章工作台_V0.3.0';let app;
+(async()=>{
+ const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;delete env.COMIC_DATA_DIR;
+ app=await _electron.launch({executablePath:path.join(folder,'漫画文章工作台.exe'),args:[],env,timeout:90000});
+ const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.locator('.stat-value').first().waitFor({timeout:90000});
+ const health=await page.evaluate(()=>window.desktop.api('/health'));assert.equal(health.version,'0.3.0');
+ const stats=await page.evaluate(()=>window.desktop.api('/stats'));
+ assert.equal(await page.locator('.stat-value').first().innerText(),'3,217');
+ assert.equal((await page.evaluate(()=>window.desktop.api('/prompts'))).length,148);
+ const body=await page.evaluate(()=>window.desktop.api('/body/stats'));assert.equal(body.missing,3217);assert.equal(body.engine.available,true);
+ assert(body.engine.path.includes('ArticleBodyScraper'));assert.equal(body.engine.max_chars,0);
+ const preview=await page.evaluate(()=>window.desktop.api('/import/preview',{method:'POST',body:{path:'C:/Users/74319/Downloads/article-1029150107179325726744084.xlsx'}}));
+ assert.equal(preview.count,2000);assert.equal(preview.suggested.body,'');
+ await page.locator('#body-btn').click();await page.locator('.body-metrics').waitFor();
+ assert.equal(await page.locator('#page-title').innerText(),'正文抓取');
+ assert.equal(await page.locator('.body-metrics .stat-value').nth(1).innerText(),'3,217');
+ await page.screenshot({path:path.join(root,'build/body-packaged-page.png'),fullPage:true});
+ assert.deepEqual(errors,[]);await app.close();app=null;
+ const report={ok:true,version:health.version,material_count:3217,prompt_count:148,engine:body.engine,checks:['桌面EXE与冻结后端可启动','原数据库3217条素材完整保留','148份规则保留','XLSX预览可用','正文引擎路径和接口可用','正文抓取页可用且无脚本错误'],model_calls:0,public_article_fetches:0};
+ fs.writeFileSync(path.join(root,'build/body-packaged-checks.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
+})().catch(async e=>{console.error(e);if(app)await app.close().catch(()=>{});process.exitCode=1});

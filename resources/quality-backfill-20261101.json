@@ -1,0 +1,496 @@
+[
+  {
+    "id": 6,
+    "content_hash": "8f9957c0e6f06317c330892b4625934b73c80407cceb372705f533cb64eacfb2",
+    "review": {
+      "completeness": 93,
+      "reversal": 79,
+      "fun": 80,
+      "reason": "翻译误会完整，征兵收尾贴合场景；正文先解释了笑点，惊喜有所减弱。",
+      "evidence": [
+        "贴纸负责壮胆，翻译器差点负责征兵。"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 7,
+    "content_hash": "c1ff9eef010bc718e0e9f3ab9800953f5a8b91488f4d1ca7c07d10f9958990bd",
+    "review": {
+      "completeness": 93,
+      "reversal": 70,
+      "fun": 72,
+      "reason": "偷钱后留在床上有行为反差，过程清楚；标题已揭晓关键反差，结尾主要复述。",
+      "evidence": [
+        "他偷了钱却没离开，反而在失主床上睡着了。"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 34,
+    "content_hash": "102e9c405f7a88ef1e941690f930d2d5c5f7913aec8974fca2031a3069df2bbc",
+    "review": {
+      "completeness": 96,
+      "reversal": 87,
+      "fun": 88,
+      "reason": "顺路搭车被误读成示好，像母亲一样大的回答直接打破期待，关系与回应清楚。",
+      "evidence": [
+        "你跟我妈一样大，有什么不好意思的！"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 35,
+    "content_hash": "8f70fffedddea535c94e4e3c2321da54651a148be44bf1b33f07b6b589054d61",
+    "review": {
+      "completeness": 76,
+      "reversal": 65,
+      "fun": 65,
+      "reason": "支付误会能成立，但丈夫已经付五十元，后座又留二十元和纸条，双重结账没有交代，削弱包袱。",
+      "evidence": [
+        "油钱在座垫下。"
+      ],
+      "risks": [
+        "两次付款关系未交代"
+      ]
+    }
+  },
+  {
+    "id": 36,
+    "content_hash": "cba277c1ec0e2770b263716d636e85166a0951648b4ceb11bd24db10f1593f1c",
+    "review": {
+      "completeness": 82,
+      "reversal": 74,
+      "fun": 74,
+      "reason": "查车遇女婿、被当成网约车有错位；女婿是否看穿没有明确落点，结尾主要是解围。",
+      "evidence": [
+        "您这是搞副业，跑起网约车来了？"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 37,
+    "content_hash": "c637a4273c9637e72cbb15e5da3af7d0e15cd243b6a046a210dae1dd10dc3252",
+    "review": {
+      "completeness": 92,
+      "reversal": 86,
+      "fun": 87,
+      "reason": "评论本想讽刺中介口吻，博主直接认领身份，回复短而贴合前文；中间解释稍多。",
+      "evidence": [
+        "我就是中介。"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 38,
+    "content_hash": "a6554fbee35e4890572d614a8387c8ea5b0578137166ad92cbac98cdb0c052bf",
+    "review": {
+      "completeness": 94,
+      "reversal": 68,
+      "fun": 69,
+      "reason": "父亲持续误读紧张表现，故事闭环；结果偏温情，多个夸奖段落对笑点推进有限。",
+      "evidence": [
+        "那天你吓得直冒汗，愣没走，多有担当！"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 39,
+    "content_hash": "e1de7d3c648bf26e89cac8fdfa2fc3df2b420a03fa15aa5de49e7c9741a6361a",
+    "review": {
+      "completeness": 69,
+      "reversal": 51,
+      "fun": 50,
+      "reason": "鉴定争执和醉酒暗示缺明确关系，结尾仅说不离婚，没有解决最初疑点，也缺清晰喜剧落点。",
+      "evidence": [
+        "小姨子觉得这话有道理，从此不提离婚了。"
+      ],
+      "risks": [
+        "醉酒暗示未得到明确结局"
+      ]
+    }
+  },
+  {
+    "id": 40,
+    "content_hash": "fad2002640852cc660f4dc6a9969ee8eb265526a3e6bbca934e54895b1e13af4",
+    "review": {
+      "completeness": 90,
+      "reversal": 82,
+      "fun": 83,
+      "reason": "把择偶标准降到下雨知道回家，夸张具体且口语直接；铺垫反复解释要求很低，略显拖沓。",
+      "evidence": [
+        "下雨天，她知道往家里跑呢，就可以要。"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 41,
+    "content_hash": "a8e81703eabd075149a7429fc441f2584c107a4246515eb551ee05bbaaff3497",
+    "review": {
+      "completeness": 89,
+      "reversal": 70,
+      "fun": 66,
+      "reason": "小三是姓名的误会交代清楚；末尾落在家属急病与请假，喜剧气氛中断。",
+      "evidence": [
+        "我明天上不了班，跟您请个假。"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 42,
+    "content_hash": "c2db1002d3cc0043e70e052dc826e0e5c697ceabce3dbd994e6019a72a57cbc5",
+    "review": {
+      "completeness": 67,
+      "reversal": 47,
+      "fun": 46,
+      "reason": "丈夫捉奸被妻子反指有矛盾，但停在沉默回卧室，缺少能收束故事的包袱。",
+      "evidence": [
+        "他没接话，转身往卧室走。"
+      ],
+      "risks": [
+        "故事停在争执，没有有效收尾"
+      ]
+    }
+  },
+  {
+    "id": 43,
+    "content_hash": "8ed213d17c9cc741b9cb184ab0030b47672e8c9d2ebca9f6ab65f12b13e200dc",
+    "review": {
+      "completeness": 93,
+      "reversal": 75,
+      "fun": 80,
+      "reason": "搭伙逐渐变成夫妻管束，动作与对白连贯；发展容易预见，赔笑戒烟的结尾较常见。",
+      "evidence": [
+        "别散，我戒烟还不行吗？"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 44,
+    "content_hash": "983eeee4373d49475ddb11867298e04e21d99689b36637bc8129592b3deaf0bc",
+    "review": {
+      "completeness": 90,
+      "reversal": 76,
+      "fun": 78,
+      "reason": "先夸成熟再承认争不过年轻追求者，坦白动机带出反差；结尾力度中等。",
+      "evidence": [
+        "我竞争不过他们。"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 45,
+    "content_hash": "31e751d5c18462fd60eb216ccf3fa5e83ac798bd06ab2221045e8bb3fefb5dad",
+    "review": {
+      "completeness": 92,
+      "reversal": 50,
+      "fun": 54,
+      "reason": "买虾议价过程完整，但直播施压后降价是常规冲突解决，缺少意外的喜剧结果。",
+      "evidence": [
+        "摊主不接话了，把直播手机往旁边推了推。"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 46,
+    "content_hash": "3b60fe24c0cb21a6ac14a273a2d6e74443d9595b94245ddba564a09021a75d33",
+    "review": {
+      "completeness": 81,
+      "reversal": 44,
+      "fun": 43,
+      "reason": "查酒驾与亮关系有场景，但最后仍重复找关系，未形成新的反转或清晰笑点。",
+      "evidence": [
+        "我二舅真能摆平！"
+      ],
+      "risks": [
+        "缺少实际喜剧落点"
+      ]
+    }
+  },
+  {
+    "id": 47,
+    "content_hash": "b106fde2b0d04b068ebe8e2a43c5a12cc160e72e27f4a39f0b035b8cd4ff943f",
+    "review": {
+      "completeness": 84,
+      "reversal": 76,
+      "fun": 78,
+      "reason": "呼噜吓跑约会对象有夸张画面，养蜂比较带来笑意；喷雾备注试睡的承接较生硬。",
+      "evidence": [
+        "说蜜蜂嗡嗡都比你有节奏。"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 48,
+    "content_hash": "4fde4c59c55ea44a94fd4bca50fbd14326e93eec89423855ad8d4e7590ca8c59",
+    "review": {
+      "completeness": 58,
+      "reversal": 44,
+      "fun": 40,
+      "reason": "谜面和追求场景存在，但没有公布姓名、谜底或离开者的理解，读者无法独立补齐结局。",
+      "evidence": [
+        "这不就是我的名字吗？"
+      ],
+      "risks": [
+        "未公布谜底与姓名"
+      ]
+    }
+  },
+  {
+    "id": 49,
+    "content_hash": "9b97a90078ca1b0300bc4175a63f2f646941a1f5ac3626c9922e2cd08b42b0f0",
+    "review": {
+      "completeness": 90,
+      "reversal": 71,
+      "fun": 70,
+      "reason": "藏在被子里再摔出人的动作清楚，有直接滑稽画面；机制常见，人物后续反应欠缺。",
+      "evidence": [
+        "可被子里，突然摔出个男人。"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 50,
+    "content_hash": "fd9655d545a1dc8e8552e333994470bd0a2403888a8e5e6f052210c82a1fac8b",
+    "review": {
+      "completeness": 87,
+      "reversal": 68,
+      "fun": 70,
+      "reason": "女人暗示与男人只想工作形成错位，但收尾搬砖是常见标签，缺少本场景独有的推进。",
+      "evidence": [
+        "男人挂断电话，又去搬砖了。"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 51,
+    "content_hash": "06e9fa8964b369b14420d06e07ee3916260a0009e82b6a940b8374a9e4c55d10",
+    "review": {
+      "completeness": 80,
+      "reversal": 66,
+      "fun": 71,
+      "reason": "认错人可理解，但妻子故意测试的动机牵强，最后讨两顿红烧肉与前面误会连接较弱。",
+      "evidence": [
+        "得做两顿。"
+      ],
+      "risks": [
+        "妻子测试动机牵强"
+      ]
+    }
+  },
+  {
+    "id": 52,
+    "content_hash": "a29c8c4861f610477c2295b89b3156398561774e4b651d9b360df94c216d716f",
+    "review": {
+      "completeness": 85,
+      "reversal": 84,
+      "fun": 83,
+      "reason": "把尿分叉转成看东西重影，笔的数量承担揭晓；诊室推断略跳，但包袱可以读懂。",
+      "evidence": [
+        "老汉看了看：“二啊！”"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 53,
+    "content_hash": "44d66095d7487dc4f57b38077adf9d617519e49169838ade306269625c70fd94",
+    "review": {
+      "completeness": 65,
+      "reversal": 69,
+      "fun": 62,
+      "reason": "疑心外遇转成偷吃有错位，但污渍成分、化验流程和等结果后烤串仍热的时序都需要补解释。",
+      "evidence": [
+        "给你带了十串板筋，还热乎呢。"
+      ],
+      "risks": [
+        "化验等待与烤串热度时序不清"
+      ]
+    }
+  },
+  {
+    "id": 54,
+    "content_hash": "94fa46a442b6967393eb32aadb98263c9f7f937a4f8c4d9476ee613cafd309cb",
+    "review": {
+      "completeness": 93,
+      "reversal": 55,
+      "fun": 59,
+      "reason": "同龄却嫌对方年纪大的双标清楚；结尾只是心里反问，缺少进一步意外和对白包袱。",
+      "evidence": [
+        "你不也40了吗，凭什么嫌她年纪大？"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 55,
+    "content_hash": "ae1a5b26ed896bf5473ac0bbad155efe3411051ae369a63538624e87788561a2",
+    "review": {
+      "completeness": 94,
+      "reversal": 70,
+      "fun": 75,
+      "reason": "借钱时叫哥、接机时叫外人的称呼差异明确；最终道歉删帖偏常见爽文结果。",
+      "evidence": [
+        "借款备注还在，你回的是‘谢了哥’。"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 56,
+    "content_hash": "54d3ebfb0c6c936a1f98e311b9d3890871c05a64499041d46d6a594eb7e79154",
+    "review": {
+      "completeness": 94,
+      "reversal": 87,
+      "fun": 87,
+      "reason": "合住暗示被理解成替公司省钱，公费与床挤的理由贴合场景，回应直接自然。",
+      "evidence": [
+        "公费出差，你还不知道享受一下？"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 57,
+    "content_hash": "f2a4f01460fe505150f2769c605f2e39cf141ad7caaf1df94a1329d90eb7cfef",
+    "review": {
+      "completeness": 82,
+      "reversal": 62,
+      "fun": 66,
+      "reason": "阳台喊话有生活感；邻居突然代吃晚饭没有解决夫妻的猜谜冲突，落点关联偏弱。",
+      "evidence": [
+        "嫂子，要不我帮你把他晚饭吃了？"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 58,
+    "content_hash": "7943a9c0378518f54639a7a09e8fe1181790c8129b04d94f6cd0468666831f9d",
+    "review": {
+      "completeness": 93,
+      "reversal": 83,
+      "fun": 83,
+      "reason": "明星遥远、熟人就在身边的区别有具体关系依据，最后对白解释争执且带反差；离婚升级偏重。",
+      "evidence": [
+        "我选的你见不着，你选的我都认识！"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 59,
+    "content_hash": "df577f9dc3a6c44e8bad0fe766c0d989d86fd85e65981e3464afa3704ce42012",
+    "review": {
+      "completeness": 94,
+      "reversal": 73,
+      "fun": 74,
+      "reason": "机器说话被揭成顾客翻译，话语归属交代清楚；暂停服务后的自认翻译，意外感较轻。",
+      "evidence": [
+        "前面那些话，是我翻译的。"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 60,
+    "content_hash": "077d3ede882c702c9ae5e85cf7dc6b85bbd91a275759063462086ec0f2185b78",
+    "review": {
+      "completeness": 76,
+      "reversal": 67,
+      "fun": 64,
+      "reason": "抱腿抢回包的动作清楚，但来人身份与钱的归属没有交代，私留钱的尾句使喜剧落点分散。",
+      "evidence": [
+        "可我儿子也没这么多钱呀……算了，我自己留着吧。"
+      ],
+      "risks": [
+        "人物身份和钱的归属模糊"
+      ]
+    }
+  },
+  {
+    "id": 61,
+    "content_hash": "f4e06a7795af269d62c762e572deb5cd437f52b2b19652a706dff3d6dee698d5",
+    "review": {
+      "completeness": 88,
+      "reversal": 38,
+      "fun": 35,
+      "reason": "突击检查、调岗和后续复查基本连贯，但主体是纪律整顿，结尾测评建议没有喜剧反转。",
+      "evidence": [
+        "领导有没有把亲戚塞进关键岗。"
+      ],
+      "risks": [
+        "内容主要是纪律整顿"
+      ]
+    }
+  },
+  {
+    "id": 62,
+    "content_hash": "f4e65ee075034c36e6094f77582d3c5dc6c8f3aaf6911666a8654e565f84e321",
+    "review": {
+      "completeness": 92,
+      "reversal": 59,
+      "fun": 62,
+      "reason": "洗吹到丈夫干呕的过程清楚，笑意主要依靠气味与反应，结尾妻子笑没有进一步反差。",
+      "evidence": [
+        "媳妇看见他的反应，捂着嘴笑了起来。"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 63,
+    "content_hash": "f617d3d39fc19f4c438d1dccd2d4a7a1f4716b0145afcb1c10135b153a323179",
+    "review": {
+      "completeness": 88,
+      "reversal": 71,
+      "fun": 75,
+      "reason": "防贼与卖下蛋鸡的穷日子对话有生活感；末尾叮当响的比喻较绕，削弱直接笑感。",
+      "evidence": [
+        "可鸡卖了，咱连叮当响都响不起来了。"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 64,
+    "content_hash": "e73f906df0c8cc26e1aa3fe6b28e36893055ffc0e51302cb4dd4b043a51dc8f5",
+    "review": {
+      "completeness": 92,
+      "reversal": 76,
+      "fun": 74,
+      "reason": "以为柜内有钱转成卖柜壳，物件前后呼应；黄铜收益未交代，结果力度稍弱。",
+      "evidence": [
+        "找了半天柜子里的钱，最后卖的是柜子。"
+      ],
+      "risks": []
+    }
+  },
+  {
+    "id": 65,
+    "content_hash": "0ebe2e8eda5e1a324b8b7bb90faf7660fc58aa2d80d5beb70c824b4cbdbb0801",
+    "review": {
+      "completeness": 96,
+      "reversal": 89,
+      "fun": 90,
+      "reason": "借钱数额突然抬高制造期待，信贷经理揭晓有明确职业机制，输入又撤回的动作自然收束。",
+      "evidence": [
+        "银行，信贷经理。带齐资料，来找我办。"
+      ],
+      "risks": []
+    }
+  }
+]

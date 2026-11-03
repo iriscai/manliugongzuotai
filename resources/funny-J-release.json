@@ -1,0 +1,27 @@
+{
+  "status": "pending",
+  "variant": "J",
+  "note": "新增J候选已试跑两版；修订版6篇模型均分88.17，5篇通过格式校验，1篇短标题未说明原因；未达到90分启用标准，保持停用。",
+  "review_date": "2026-11-01",
+  "review_total": 452,
+  "scored_count": 450,
+  "score_mean": 80.23,
+  "fallback_count": 316,
+  "fallback_mean": 76.53,
+  "model_topic_count": 136,
+  "model_topic_mean": 88.84,
+  "title_target": "60–64，确需例外48–59并说明原因；最终绝不超过64",
+  "scope": "仅新增搞笑J，不修改A至I或其他赛道",
+  "trial_mean": 88.17,
+  "trial_min": 81,
+  "trial_count": 6,
+  "trial_valid_count": 5,
+  "paired_old_mean": 80.2,
+  "paired_new_mean": 89.6,
+  "requests": 12,
+  "usage": {
+    "prompt_tokens": 51200,
+    "completion_tokens": 32755,
+    "total_tokens": 83955
+  }
+}

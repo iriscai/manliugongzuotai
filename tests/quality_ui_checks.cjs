@@ -1,0 +1,22 @@
+const {_electron}=require('C:/Users/74319/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const path=require('path'),assert=require('assert');const root=path.resolve(__dirname,'..');let app;
+(async()=>{
+ const env={...process.env,COMIC_DATA_DIR:path.join(root,'build/quality-ui-data'),COMIC_PUSH_TARGET_PROJECT:path.join(root,'build/quality-target')};delete env.ELECTRON_RUN_AS_NODE;
+ app=await _electron.launch({executablePath:'E:/日程提醒/node_modules/electron/dist/electron.exe',args:[process.env.COMIC_TEST_APP||root],env,timeout:90000});
+ const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.locator('.stat-value').first().waitFor({timeout:90000});
+ await page.locator('[data-nav="results"]').first().click();await page.locator('.quality-cell').first().waitFor();
+ await page.locator('[data-result-filter="score_band"]').selectOption('excellent');await page.waitForFunction(()=>pushRows.length===6);
+ assert.equal(await page.locator('.quality-cell').count(),6);assert((await page.locator('.quality-cell').first().innerText()).includes('搞笑漫画-优秀'));
+ await page.screenshot({path:path.join(root,'build/quality-results.png'),fullPage:true});
+ await page.locator('[data-quality-action="detail"]').first().click();await page.locator('.quality-details[open]').waitFor();assert((await page.locator('.quality-details').innerText()).includes('数字'));
+ await page.locator('button[data-management="close-article"]').click();
+ await page.locator('[data-quality-action="mapping"]').click();await page.locator('[data-category-source="职业职场"]').waitFor();
+ await page.locator('[data-category-source="职业职场"]').fill('职场');await page.locator('[data-quality-action="save-mapping"]').click();
+ await page.waitForFunction(async()=>{const r=await window.desktop.api('/results/push-mapping');return r.rows.find(x=>x.source==='职业职场').target==='职场';});
+ await page.locator('[data-result-filter="score_band"]').selectOption('default');await page.waitForFunction(()=>pushRows.length>0&&pushRows.every(x=>x.category!=='搞笑'));
+ assert((await page.locator('.quality-cell').first().innerText()).includes('60分'));
+ await page.locator('[data-result-filter="score_band"]').selectOption('low');await page.waitForFunction(()=>pushRows.length===13);
+ assert((await page.locator('.quality-cell').first().innerText()).includes('暂不推送'));
+ assert.deepEqual(errors,[]);await app.close();app=null;
+ console.log(JSON.stringify({ok:true,excellent6_good15_low13:true,default60_visible:true,score_details_visible:true,editable_category_mapping:true,renderer_errors:0,external_calls:0}));
+})().catch(async e=>{console.error(e);if(app)await app.close().catch(()=>{});process.exitCode=1;});

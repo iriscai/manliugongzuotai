@@ -1,0 +1,20 @@
+{
+  "status": "approved",
+  "mode": "funny_singlecall_I_v1",
+  "trial_version": "v4",
+  "threshold": 90,
+  "sample_count": 5,
+  "holdout_count": 2,
+  "negative_controls": 2,
+  "min_score": 92,
+  "mean_score": 93.8,
+  "base_min": 87,
+  "base_mean": 88.8,
+  "content_sha256": "acc5581524d485ec715e7c89f33d77ad533069f97050cbf551d8e9afcaad5f1e",
+  "scores_sha256": "a735710e2c3c40d467bd6c88c1c990468501d7a5a4e043a91b53ef61aaa163f4",
+  "review_type": "本聊天助手逐条语义评分，1020三维等权平均及数字加5；不是用户逐条评分",
+  "scoring_scope": "T2最终title加article，未沿用R2原稿分数",
+  "model": "gpt-6.1-sol",
+  "real_trial_requests": 21,
+  "approved_at": "2026-10-31T23:10:08+08:00"
+}

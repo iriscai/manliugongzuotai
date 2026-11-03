@@ -1,0 +1,24 @@
+const {_electron}=require('C:/Users/74319/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const fs=require('fs'),path=require('path'),assert=require('assert');let app;
+const root=path.resolve(__dirname,'..'),fixture=JSON.parse(fs.readFileSync(path.join(root,'build/push-ui-fixture.json'),'utf8'));
+(async()=>{
+ const env={...process.env,COMIC_DATA_DIR:fixture.data,COMIC_PUSH_TARGET_PROJECT:fixture.target_project};delete env.ELECTRON_RUN_AS_NODE;
+ app=await _electron.launch({executablePath:'E:/日程提醒/node_modules/electron/dist/electron.exe',args:[process.env.COMIC_TEST_APP||root],env,timeout:90000});
+ const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(20000);
+ await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].hide());await page.locator('.stat-value').first().waitFor({timeout:60000});
+ await page.evaluate(()=>navigate('results'));await page.locator('[data-push-flow="history"]').waitFor();
+ await page.locator('[data-push-select="31"]').check();await page.locator('[data-push-action="send"]').click();
+ await page.waitForFunction(()=>!pushBusy);const status=await page.evaluate(()=>window.desktop.api('/results?page=1'));
+ assert.equal(status.rows.find(r=>r.id===31).push_state,'pushed');
+ await page.locator('[data-push-flow="history"]').click();await page.locator('[data-push-flow="detail"]').first().click();
+ await page.locator('.push-delivery-rows').waitFor();assert((await page.locator('.modal').innerText()).includes('已核对入库'));
+ await page.locator('[data-push-flow="replay-dialog"]').click();await page.locator('[data-push-flow="confirm-replay"]').waitFor();
+ assert((await page.locator('.modal').innerText()).includes('不重复新增'));
+ await page.locator('[data-push-flow="confirm-replay"]').click();await page.locator('.push-delivery-rows').waitFor();
+ const history=await page.evaluate(()=>window.desktop.api('/results/push-history'));assert(history.total>=2);
+ await page.locator('[data-action="close-modal"]').click();await page.locator('[data-push-flow="target"]').click();
+ assert((await page.locator('#push-target-project').inputValue()).includes('factory'));
+ await page.locator('[data-action="close-modal"]').click();await page.screenshot({path:path.join(root,'build/push-flow-ui.png'),fullPage:true});
+ assert.deepEqual(errors,[]);await app.close();app=null;
+ console.log(JSON.stringify({ok:true,verified_success:true,history_and_item_details:true,immutable_replay_confirmation:true,target_visible:true,model_calls:0,production_changes:0}));
+})().catch(async e=>{console.error(e);if(app)await app.close().catch(()=>{});process.exitCode=1;});

@@ -1,0 +1,26 @@
+const {_electron}=require('C:/Users/74319/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const path=require('path'),fs=require('fs'),assert=require('assert');const root=path.resolve(__dirname,'..');let app;
+(async()=>{
+ const fixture=JSON.parse(fs.readFileSync(path.join(root,'build/history-cleanup-ui-fixture.json'),'utf8'));
+ const env={...process.env,COMIC_DATA_DIR:fixture.data,COMIC_PUSH_TARGET_PROJECT:path.join(root,'build/quality-target')};delete env.ELECTRON_RUN_AS_NODE;
+ app=await _electron.launch({executablePath:'E:/日程提醒/node_modules/electron/dist/electron.exe',args:[process.env.COMIC_TEST_APP||root],env,timeout:90000});
+ const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.locator('.stat-value').first().waitFor({timeout:90000});
+ await page.locator('[data-history-cleanup="open"]').click();await page.waitForFunction(()=>historyCleanupPreview?.counts.runs===1);
+ assert((await page.locator('#history-cleanup-preview').innerText()).includes('北京时间'));
+ await page.screenshot({path:path.join(root,'build/history-cleanup-preview.png'),fullPage:true});
+ await page.locator('#history-cleanup-period').selectOption('7d');await page.waitForFunction(()=>historyCleanupPreview?.options.period==='7d');
+ await page.locator('[data-history-cleanup-option="records"]').uncheck();await page.waitForFunction(()=>historyCleanupPreview?.options.records===false);
+ assert(await page.locator('[data-history-cleanup-option="files"]').isDisabled());
+ await page.locator('#confirm-history-cleanup').click();await page.getByRole('heading',{name:'历史清理完成'}).waitFor();
+ const backup=await page.locator('.modal input[readonly],.modal-box input[readonly],#modal-root input[readonly]').first().inputValue();assert(fs.existsSync(backup));
+ assert.equal(await page.evaluate(async()=>{const r=await window.desktop.api('/run/history?q=cleanup_fixture_old');return r.total}),1);
+ await page.locator('#modal-root [data-action="close-modal"]').last().click();
+ await page.locator('[data-history-cleanup="open"]').click();await page.waitForFunction(()=>historyCleanupPreview?.counts.runs===1);
+ await page.locator('#confirm-history-cleanup').click();await page.getByRole('heading',{name:'历史清理完成'}).waitFor();
+ assert.equal(await page.evaluate(async()=>{const r=await window.desktop.api('/run/history?q=cleanup_fixture_old');return r.total}),0);
+ assert(!(fs.existsSync(path.join(fixture.data,'runs/cleanup_fixture_old/cached.txt'))));
+ assert.equal(await page.evaluate(async()=>{const r=await window.desktop.api('/results');return r.total}),65);
+ assert.equal(await page.evaluate(async()=>{const r=await window.desktop.api('/results?category='+encodeURIComponent('搞笑')+'&score_band=excellent');return r.total}),6);
+ assert.deepEqual(errors,[]);await app.close();app=null;
+ console.log(JSON.stringify({ok:true,global_entry:true,month_and7day_preview:true,logs_only:true,confirmation_and_backup:true,records_and_caches_cleaned:true,articles_scores_preserved:true,real_history_deleted:0,external_calls:0}));
+})().catch(async e=>{console.error(e);if(app)await app.close().catch(()=>{});process.exitCode=1;});

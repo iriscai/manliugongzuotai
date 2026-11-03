@@ -1,0 +1,25 @@
+const {_electron}=require('C:/Users/74319/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const assert=require('assert'),fs=require('fs'),path=require('path');
+const root=path.resolve(__dirname,'..'),installed=process.argv.includes('--installed'),data=fs.mkdtempSync(path.join(root,'build/body-quota-ui-'));let app;
+(async()=>{
+ const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;if(installed)delete env.COMIC_DATA_DIR;else env.COMIC_DATA_DIR=data;
+ app=await _electron.launch({executablePath:installed?'C:/Users/74319/Desktop/漫画文章工作台_V0.3.0/漫画文章工作台.exe':'E:/日程提醒/node_modules/electron/dist/electron.exe',args:installed?[]:[root],env,timeout:90000});
+ const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.locator('.stat-value').first().waitFor({timeout:90000});
+ assert.equal((await page.evaluate(()=>window.desktop.api('/health'))).version,'0.3.3');
+ const before=await page.evaluate(()=>window.desktop.api('/settings'));
+ await page.locator('#body-btn').click();await page.locator('.body-metrics').waitFor();await page.locator('#start-btn').click();
+ await page.locator('#body-limit').waitFor();assert.equal(await page.locator('#body-limit').inputValue(),String(before.body_run_size));
+ assert.equal(await page.locator('#run-mode').count(),0);
+ assert((await page.locator('.modal .callout').innerText()).includes('不会自动接着跑下一批'));
+ await page.locator('#body-limit').fill('0');await page.locator('[data-body-action="confirm-start"]').click();
+ await page.getByText('本次处理条数需为1至10000的整数',{exact:true}).waitFor();
+ await page.locator('#body-limit').fill('20');await page.screenshot({path:path.join(root,installed?'build/body-quota-installed.png':'build/body-quota-ui.png'),fullPage:true});
+ await page.locator('[data-action="close-modal"]').first().click();
+ await page.locator('[data-body-action="start"]').click();await page.locator('#body-limit').waitFor();
+ assert.equal(await page.locator('#run-mode').count(),0);await page.locator('[data-action="close-modal"]').first().click();
+ await page.locator('[data-nav="overview"]').first().click();await page.locator('#start-btn').click();await page.locator('#run-mode').waitFor();
+ assert.equal(await page.locator('#body-limit').count(),0);
+ assert.deepEqual(errors,[]);await app.close();app=null;
+ const report={ok:true,installed_exe:installed,checks:['正文页顶部开始处理进入单次抓取','弹窗提供本次处理条数','零条数拦截','明确提示达到数量停止','模块内开始按钮也使用同一限额入口','其他页面保留提炼生文入口'],real_jobs_started:0,model_calls:0};
+ fs.writeFileSync(path.join(root,installed?'build/body-quota-installed-checks.json':'build/body-quota-ui-checks.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
+})().catch(async e=>{console.error(e);if(app)await app.close().catch(()=>{});process.exitCode=1});

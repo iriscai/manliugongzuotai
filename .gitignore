@@ -1,0 +1,45 @@
+# Local libraries, queues, model responses, browser profiles and reports.
+/data/
+/outputs/
+/build/
+/dist/
+/release/
+/node_modules/
+/backend/vendor/
+/.venv/
+/venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.log
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
+*.exe
+*.dll
+*.pdb
+*.spec
+*.zip
+
+# Credentials and machine-specific configuration.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+credentials*.json
+secrets*.json
+settings.local.json
+config.local.json
+/config/system.json
+
+# Editor and OS state.
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini

@@ -1,0 +1,22 @@
+const {_electron}=require('C:/Users/74319/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const assert=require('assert'),fs=require('fs'),path=require('path');const root=path.resolve(__dirname,'..');let app;
+(async()=>{
+ const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;delete env.COMIC_DATA_DIR;
+ app=await _electron.launch({executablePath:'C:/Users/74319/Desktop/漫画文章工作台_V0.3.0/漫画文章工作台.exe',args:[],env,timeout:90000});
+ const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.locator('.stat-value').first().waitFor({timeout:90000});
+ assert.equal((await page.evaluate(()=>window.desktop.api('/health'))).version,'0.4.0');
+ const stats=await page.evaluate(()=>window.desktop.api('/stats'));assert.equal(stats.counts.total,3217);
+ const first=await page.evaluate(()=>window.desktop.api('/materials/1'));assert.equal(first.read_count,227354);assert.equal(first.extraction_count,0);assert.equal(first.published_day,'2026-10-28');
+ const sorted=await page.evaluate(()=>window.desktop.api('/materials?sort_by=read_count&sort_dir=desc&size=100'));assert.equal(sorted.rows.length,100);assert(sorted.rows[0].read_count>=sorted.rows[99].read_count);
+ const filtered=await page.evaluate(()=>window.desktop.api('/materials?read_min=100000&read_max=2000000&published_from=2026-10-27&published_to=2026-10-29&extract_max=0&sort_by=read_count&sort_dir=desc'));
+ assert(filtered.total>0&&filtered.total<3217);assert(filtered.rows.every(x=>x.read_count>=100000&&x.extraction_count===0));
+ await page.locator('[data-nav="materials"]').first().click();await page.locator('.material-table tbody tr').first().waitFor();
+ assert.equal(await page.locator('.material-table thead th').count(),9);
+ await page.locator('[data-catalog-action="advanced"]').click();await page.locator('#catalog-read_min').waitFor();
+ await page.locator('#catalog-read_min').fill('10万');await page.locator('#catalog-extract_max').fill('0');await page.locator('[data-catalog-action="search"]').click();
+ await page.waitForFunction(()=>catalogState.applied.read_min==='10万'&&!catalogState.dirty&&document.querySelector('.material-table'));
+ await page.screenshot({path:path.join(root,'build/catalog-installed.png'),fullPage:true});
+ assert.deepEqual(errors,[]);assert.equal((await page.evaluate(()=>window.desktop.api('/stats'))).runs.length,0);
+ await app.close();app=null;
+ const report={ok:true,installed_exe:true,materials:3217,filtered_materials:filtered.total,checks:['冻结后端新模块可用','原阅读量与发布日期正确','组合筛选及数据库排序','六字段列表及高级筛选可用','未启动提炼生文'],model_calls:0};fs.writeFileSync(path.join(root,'build/catalog-installed-checks.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));
+})().catch(async e=>{console.error(e);if(app)await app.close().catch(()=>{});process.exitCode=1});

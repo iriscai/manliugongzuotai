@@ -1,0 +1,28 @@
+const {_electron}=require('C:/Users/74319/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const path=require('path'),fs=require('fs'),assert=require('assert');const root=path.resolve(__dirname,'..');let app;
+(async()=>{
+ const fixture=JSON.parse(fs.readFileSync(path.join(root,'build/custom-routing-ui-fixture.json'),'utf8'));
+ const env={...process.env,COMIC_DATA_DIR:fixture.data,COMIC_PUSH_TARGET_PROJECT:path.join(root,'build/quality-target')};delete env.ELECTRON_RUN_AS_NODE;
+ app=await _electron.launch({executablePath:'E:/日程提醒/node_modules/electron/dist/electron.exe',args:[process.env.COMIC_TEST_APP||root],env,timeout:90000});
+ const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.locator('.stat-value').first().waitFor({timeout:90000});
+ await page.locator('[data-nav="results"]').first().click();await page.locator('[data-quality-action="mapping"]').click();await page.locator('[data-score-rule]').first().waitFor();
+ assert.equal(await page.locator('[data-score-rule]').count(),2);
+ const row=i=>page.locator('[data-score-rule]').nth(i);
+ await row(0).locator('[data-score-min]').fill('96');await row(0).locator('[data-score-target]').fill('搞笑漫画-精品');
+ await row(1).locator('[data-score-min]').fill('90');await row(1).locator('[data-score-max]').fill('95');await row(1).locator('[data-score-target]').fill('搞笑漫画-优秀');
+ await page.locator('[data-quality-action="add-score-rule"]').click();await row(2).locator('[data-score-min]').fill('80');await row(2).locator('[data-score-max]').fill('89');await row(2).locator('[data-score-target]').fill('搞笑漫画-良好');
+ assert(!(await page.locator('#score-routing-empty').isVisible()));
+ await page.screenshot({path:path.join(root,'build/custom-score-routing.png'),fullPage:true});
+ await page.locator('[data-quality-action="save-mapping"]').click();await page.locator('.score-route-editor').waitFor({state:'detached'});
+ await page.waitForFunction(()=>document.querySelector('[data-row-key="result-65"] .quality-target')?.textContent.includes('搞笑漫画-精品'));
+ await page.locator('[data-quality-action="mapping"]').click();await page.locator('[data-score-rule]').first().waitFor();assert.equal(await page.locator('[data-score-rule]').count(),3);assert.equal(await row(0).locator('[data-score-min]').inputValue(),'96');
+ await row(1).locator('[data-score-max]').fill('99');await page.locator('[data-quality-action="save-mapping"]').click();await page.waitForFunction(()=>document.querySelector('#push-mapping-error')?.textContent.includes('重叠'));
+ assert(await page.locator('.score-route-editor').isVisible());
+ await row(1).locator('[data-score-max]').fill('95');await row(2).locator('[data-score-enabled]').uncheck();await page.locator('[data-quality-action="save-mapping"]').click();await page.locator('.score-route-editor').waitFor({state:'detached'});
+ assert(await page.evaluate(async()=>{const r=await window.desktop.api('/results?score_band=good');return r.rows.every(x=>!x.push_category&&x.push_block_reason.includes('未匹配'));}));
+ await page.locator('[data-quality-action="mapping"]').click();await page.locator('[data-score-rule]').first().waitFor();await page.locator('[data-quality-action="reset-score-rules"]').click();assert.equal(await page.locator('[data-score-rule]').count(),2);
+ await page.locator('[data-quality-action="save-mapping"]').click();await page.locator('.score-route-editor').waitFor({state:'detached'});
+ await page.waitForFunction(()=>document.querySelector('[data-row-key="result-65"] .quality-target')?.textContent.includes('搞笑漫画-优秀'));
+ assert.deepEqual(errors,[]);await app.close();app=null;
+ console.log(JSON.stringify({ok:true,editable_score_bands:true,custom_target_persisted:true,overlap_error_visible:true,disabled_band_blocks:true,restore_defaults:true,real_pushes:0,external_calls:0}));
+})().catch(async e=>{console.error(e);if(app)await app.close().catch(()=>{});process.exitCode=1;});

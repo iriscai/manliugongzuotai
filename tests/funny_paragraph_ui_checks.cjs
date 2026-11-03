@@ -1,0 +1,20 @@
+const {_electron}=require('C:/Users/74319/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const fs=require('fs'),path=require('path'),assert=require('assert');const root=path.resolve(__dirname,'..');let app;
+(async()=>{
+ const fixture=JSON.parse(fs.readFileSync(path.join(root,'build/natural-paragraph-ui-fixture.json'),'utf8'));const env={...process.env,COMIC_DATA_DIR:fixture.data,COMIC_PUSH_TARGET_PROJECT:path.join(root,'build/quality-target')};delete env.ELECTRON_RUN_AS_NODE;
+ app=await _electron.launch({executablePath:'E:/日程提醒/node_modules/electron/dist/electron.exe',args:[process.env.COMIC_TEST_APP||root],env,timeout:90000});
+ const page=await app.firstWindow(),errors=[];page.setDefaultTimeout(15000);page.on('pageerror',e=>errors.push(e.message));await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].hide());
+ await page.locator('.stat-value').first().waitFor({timeout:60000});
+ await page.evaluate(async id=>{await openArticle(id);articleTab='edit';drawArticle();},fixture.funny_id);
+ assert((await page.locator('label[for="article-edit-body"]').innerText()).includes('按意思自然分段'));
+ assert((await page.locator('#article-editor-meter').innerText()).includes('不限段数'));assert(!(await page.locator('#article-editor-meter').getAttribute('class')).includes('invalid'));
+ assert((await page.locator('#article-save-note').innerText()).includes('漫画张数后续另定'));
+ await page.screenshot({path:path.join(root,'build/funny-natural-paragraph-editor.png'),fullPage:true});
+ await page.evaluate(async id=>{editorDirty=false;await openArticle(id);articleTab='edit';drawArticle();},fixture.other_id);
+ assert((await page.locator('label[for="article-edit-body"]').innerText()).includes('8—15'));
+ assert((await page.locator('#article-save-note').innerText()).includes('每段对应一张'));
+ await page.locator('#article-edit-body').fill('普通赛道一段正文。');assert((await page.locator('#article-editor-meter').getAttribute('class')).includes('invalid'));
+ await page.evaluate(()=>{editorDirty=false;document.querySelector('#drawer-root').innerHTML='';articleDetail=null;});
+ assert.deepEqual(errors,[]);await app.close();app=null;
+ console.log(JSON.stringify({ok:true,funny_editor_accepts_one_paragraph:true,other_editor_retains8to15:true,external_calls:0,production_changes:0}));
+})().catch(async e=>{console.error(e);if(app)await app.close().catch(()=>{});process.exitCode=1;});

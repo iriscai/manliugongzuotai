@@ -1,0 +1,12 @@
+.quality-cell{min-width:180px}.quality-target{max-width:210px;white-space:normal!important;color:var(--muted)}
+.quality-details{margin-top:20px;padding:16px;border:1px solid var(--line,#e5e7eb);border-radius:12px;background:var(--panel,#fff)}
+.quality-details summary{font-weight:600;cursor:pointer;margin-bottom:12px}.quality-details small{display:block;margin:6px 0}
+.quality-inputs{display:flex;gap:12px;margin:14px 0}.quality-inputs label{display:grid;gap:6px;flex:1}.quality-inputs input{width:100%}
+.mapping-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-height:52vh;overflow:auto;margin:16px 0}
+.mapping-grid label{display:grid;grid-template-columns:84px 20px 1fr;align-items:center;gap:8px}.mapping-grid input{width:100%;min-width:0}
+@media(max-width:850px){.mapping-grid{grid-template-columns:1fr}}
+.score-route-editor{padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:16px}.score-route-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.score-route-heading h3{font-size:13px;margin:4px 0}.score-route-heading>span{font-size:10px;color:var(--muted)}.score-route-table{width:100%;border-collapse:collapse;font-size:11px}.score-route-table th{text-align:left;color:var(--muted);font-weight:500;padding:8px 6px}.score-route-table td{padding:7px 6px;border-top:1px solid var(--line)}.score-route-table input[type=number]{width:76px}.score-route-table [data-score-target]{width:100%;min-width:170px}.score-route-table input[type=checkbox]{accent-color:var(--blue)}.score-route-actions{display:flex;align-items:center;gap:18px;margin-top:12px}.ordinary-push-mapping summary{font-weight:600;font-size:13px;cursor:pointer;padding:4px 0}.ordinary-push-mapping .mapping-grid{max-height:26vh}
+#push-mapping-error{color:var(--red);font-size:12px;line-height:1.7}
+.score-route-editor [hidden]{display:none!important}
+
+.push-mapping-save{position:sticky;bottom:0;background:var(--panel);z-index:3;padding-top:12px;padding-bottom:10px;border-top:1px solid var(--line)}

@@ -1,0 +1,21 @@
+const {_electron}=require('C:/Users/74319/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const path=require('path'),assert=require('assert');const root=path.resolve(__dirname,'..');let app;
+(async()=>{
+ const env={...process.env,COMIC_DATA_DIR:path.join(root,'build/funny-ui-data')};delete env.ELECTRON_RUN_AS_NODE;
+ app=await _electron.launch({executablePath:'E:/日程提醒/node_modules/electron/dist/electron.exe',args:[process.env.COMIC_TEST_APP||root],env,timeout:90000});
+ const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));await page.locator('.stat-value').first().waitFor({timeout:90000});
+ await page.locator('[data-nav="rules"]').first().click();await page.locator('[data-rule-category="搞笑"]').click();
+ await page.waitForFunction(()=>document.querySelectorAll('[data-rule-variant]').length===8);
+ assert((await page.locator('[data-rule-category="搞笑"]').innerText()).includes('8 + 8'));
+ assert.equal(await page.locator('.nav-count').innerText(),'160');
+ await page.locator('[data-rule-variant="H"]').click();await page.waitForFunction(()=>state.ruleVariant==='H');assert((await page.locator('#prompt-content').inputValue()).includes('适用谁'));
+ await page.locator('[data-rule-kind="write"]').click();await page.waitForFunction(()=>state.ruleKind==='write');assert((await page.locator('#prompt-content').inputValue()).includes('不能写抽象报应'));
+ const before=await page.evaluate(()=>window.desktop.api('/settings'));
+ await page.getByRole('combobox',{name:'搞笑提炼方案',exact:true}).selectOption('D');await page.getByRole('combobox',{name:'搞笑生文方案',exact:true}).selectOption('C');
+ await page.locator('[data-funny-action="save-profile"]').click();await page.waitForFunction(()=>state.settings.funny_write_variant==='C');
+ const after=await page.evaluate(()=>window.desktop.api('/settings'));assert.equal(after.funny_extract_variant,'D');assert.equal(after.extract_variant,before.extract_variant);assert.equal(after.write_variant,before.write_variant);assert.deepEqual(after.allowed_categories,before.allowed_categories);
+ await page.screenshot({path:path.join(root,'build/funny-rules-ui.png'),fullPage:true});
+ await page.locator('[data-rule-category="生活"]').click();await page.waitForFunction(()=>document.querySelectorAll('[data-rule-variant]').length===2);assert.equal(await page.locator('.funny-profile').count(),0);assert.equal(await page.locator('[data-save-prompt="undefined"]').count(),0);
+ assert(['A','B'].includes(await page.evaluate(()=>state.ruleVariant)));assert.deepEqual(errors,[]);
+ await app.close();app=null;console.log(JSON.stringify({ok:true,funny_8_variants_visible:true,other_lanes_2_variants:true,funny_settings_do_not_change_global_settings:true,switching_lanes_keeps_valid_variant:true,renderer_errors:0,external_model_calls:0}));
+})().catch(async e=>{console.error(e);if(app)await app.close().catch(()=>{});process.exitCode=1;});
