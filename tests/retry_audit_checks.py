@@ -103,9 +103,14 @@ try:
         store=SimpleNamespace(root=root,connect=connect,log=lambda *a:None);w=SimpleNamespace(store=store)
         prompt='rule\n本组种子：{"topic":"same"}\n本条原始素材：{"title":"original","body":"original body"}\n用户补充要求：'
         oldfolder=root/'runs'/oldid/f'{mid}-write-{eid}-abc';oldfolder.mkdir(parents=True)
+        (oldfolder/'schema.json').write_text(dumps(FUNNY_J_ARTICLE),encoding='utf8')
         (oldfolder/'prompt.txt').write_text(prompt,encoding='utf8');(oldfolder/'raw-response-1.txt').write_text(dumps(normalized),encoding='utf8')
         saved=recover(w,root/'new',rid,mid,eid,snap,'J',prompt)
         assert saved and saved['title']==answer['title'] and saved['article']==answer['article'] and saved['recovered_response']['additional_model_calls']==0
+        wrong_schema=copy.deepcopy(FUNNY_J_ARTICLE);wrong_schema['properties']['quality_score']['properties']['fun']['enum']=[1,2]
+        (oldfolder/'schema.json').write_text(dumps(wrong_schema),encoding='utf8')
+        assert recover(w,root/'reject',rid,mid,eid,snap,'J',prompt) is None
+        (oldfolder/'schema.json').write_text(dumps(FUNNY_J_ARTICLE),encoding='utf8')
         for change in ['api_model','writing_policy','rule']:
             changed=copy.deepcopy(snap)
             if change=='api_model':changed['settings']['api_model']='other'

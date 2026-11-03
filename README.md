@@ -1,6 +1,6 @@
 # 漫流工作台
 
-Windows 桌面素材处理工作台，当前版本 **V0.23.1**。使用 Electron 界面、Python 本机服务和 SQLite 数据库，完成以下流程：
+Windows 桌面素材处理工作台，当前版本 **V0.23.2**。使用 Electron 界面、Python 本机服务和 SQLite 数据库，完成以下流程：
 
 **导入素材 → 获取正文 → 标题及正文去重验收 → 按赛道提炼主题 → 改写生文与评分 → 推送生图工具标题库。**
 
@@ -72,6 +72,7 @@ build_portable.py      原开发机历史便携包构建脚本
 在准备好 Python 环境后，可运行不调用付费模型的隔离回归检查：
 
 ```powershell
+.\.venv\Scripts\python.exe -X utf8 tests/score_schema_checks.py
 .\.venv\Scripts\python.exe -X utf8 tests/api_transport_checks.py
 .\.venv\Scripts\python.exe -X utf8 tests/task_pause_checks.py
 .\.venv\Scripts\python.exe -X utf8 tests/extraction_modes_checks.py

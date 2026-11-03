@@ -23,7 +23,7 @@ from model_queue import ModelQueue,preview as queue_preview
 from category_distribution import distribution
 import history_cleanup
 
-APP_VERSION='0.23.1'
+APP_VERSION='0.23.2'
 
 
 def main():

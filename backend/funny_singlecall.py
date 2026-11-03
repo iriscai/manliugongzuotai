@@ -29,7 +29,8 @@ for schema in (FUNNY_ARTICLE,FUNNY_J_ARTICLE):
     props=schema['properties']['generation_audit']['properties']
     props['t1_titles'].update(minItems=2,maxItems=2,uniqueItems=True,description='恰好两个不同的完整标题，优先60至64字符，不用省略号或空话凑长')
     props['t1_short_reasons'].update(minItems=2,maxItems=2,description='与两个候选一一对应；候选不足60字符时填写具体缺口，60至64字符时可留空字符串')
-    props['t1_choice'].update(enum=[1,2])
+    # I is shared by other schemas, including scores; never mutate it for a local enum.
+    props['t1_choice']={'type':'integer','enum':[1,2]}
 MULTISTAGE_VARIANTS=('I','J')
 
 def schema_for(variant):return FUNNY_J_ARTICLE if variant=='J' else FUNNY_ARTICLE

@@ -30,6 +30,10 @@ def recover(worker,folder,rid,mid,eid,snapshot,variant,current_prompt):
         except (ValueError,KeyError,StopIteration):continue
         folders=list((s.root/'runs'/old_id).glob(f'{mid}-write-{eid}-*'))
         if len(folders)!=1:continue
+        from article_quality import restricted_grade_contract
+        try:
+            if restricted_grade_contract(json.loads((folders[0]/'schema.json').read_text(encoding='utf8'))):continue
+        except (OSError,ValueError):continue
         # Match the actual seed, original source and user requirements as well as snapshots.
         marker='\n本组种子：'
         try:old_prompt=(folders[0]/'prompt.txt').read_text(encoding='utf8')

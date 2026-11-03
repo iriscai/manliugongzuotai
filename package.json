@@ -1,7 +1,7 @@
 {
   "name": "material-comic-workbench",
   "productName": "漫画文章工作台",
-  "version": "0.23.1",
+  "version": "0.23.2",
   "description": "独立的素材提炼、短文与漫画分镜数据工作台",
   "main": "main.js",
   "private": true,

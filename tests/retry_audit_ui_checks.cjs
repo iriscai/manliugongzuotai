@@ -16,6 +16,10 @@ const path=require('path'),assert=require('assert'),fs=require('fs');const root=
  await page.locator('.singlecall-artifacts').first().locator('summary').click();
  assert((await page.locator('.article-drawer').innerText()).includes('缺失说明保留为空'));
  assert((await page.locator('.article-drawer').innerText()).includes('模型未提供短标题说明'));
+ await page.evaluate(()=>{articleDetail.score=null;articleDetail.score_status='invalid_contract';const old=JSON.parse(articleDetail.score_json);old.error='原评分约束错误，待重新评分';articleDetail.score_json=JSON.stringify(old);drawArticle();});
+ await page.locator('.quality-details>summary').click();
+ assert((await page.locator('.quality-details').innerText()).includes('待重新评分'));
+ for(const key of ['completeness','reversal','fun'])assert.equal(await page.locator(`[data-grade="${key}"]`).inputValue(),'');
  assert.deepEqual(errors,[]);await app.close();app=null;
  const report={ok:true,format_warning_visible:true,saved_response_origin_visible:true,renderer_errors:0,external_model_calls:0,production_changes:0};
  fs.writeFileSync(path.join(root,'build/retry-audit-ui-checks.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report));

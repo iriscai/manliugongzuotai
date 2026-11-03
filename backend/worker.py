@@ -216,7 +216,18 @@ class Worker(ParallelExecution):
         folder=self.store.root/'runs'/rid/f'{mid}-{stage}{suffix}-{digest(contract+prompt)[:12]}'
         answer=folder/'answer.json'
         if answer.is_file():
-            try:return json.loads(answer.read_text(encoding='utf-8-sig'))
+            try:
+                from article_quality import restricted_grade_contract
+                saved_schema=folder/'schema.json'
+                issue=restricted_grade_contract(json.loads(saved_schema.read_text(encoding='utf8'))) if saved_schema.is_file() else ''
+                if issue:
+                    # Keep the original evidence, but never turn a known bad score into a new result.
+                    archived=folder/'answer.invalid-score-contract.json'
+                    if not archived.exists():archived.write_bytes(answer.read_bytes())
+                    (folder/'schema.invalid-score-contract.json').write_bytes(saved_schema.read_bytes())
+                    answer.unlink()
+                    self.store.log('已隔离错误评分约束的旧响应，重试将使用百分制约束。','score-contract',rid,mid,'warning')
+                else:return json.loads(answer.read_text(encoding='utf-8-sig'))
             except ValueError:pass
         if self.pause_flag.is_set():raise StepPaused()
         requests=[]

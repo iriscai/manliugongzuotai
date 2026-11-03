@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 from schemas import obj,arr,S,I
 
 VERSION='funny_three_dimensions_v1'
-GRADE_SCHEMA=obj({'completeness':I,'reversal':I,'fun':I,'reason':S,'evidence':arr(S),'risks':arr(S)})
+GRADE_SCHEMA=obj({**{key:{'type':'integer','minimum':0,'maximum':100,'description':'百分制维度评分，0至100整数；与标题候选编号无关'} for key in ('completeness','reversal','fun')},'reason':S,'evidence':arr(S),'risks':arr(S)})
 GRADE_INSTRUCTION='''
 最终title和article定稿后，仅对这份最终标题与正文评分一次，返回quality_score对象。
 completeness故事完整性、reversal反转程度、fun趣味性分别给0—100整数。完整性看人物、因果、结果闭环；反转看结尾是否有场景依据且出人意料；趣味性看实际笑点、口语自然度、生硬和解释感。90+要有明确笑点且自然，80—89完整但较常见或偏平，60—79笑点有限，60以下缺包袱或依赖补设定。不得预设优秀比例或为通过推送门槛倒填分数。
@@ -13,6 +13,24 @@ reason写本篇具体优点与扣分点；evidence列1—3段逐字来自最终t
 '''
 
 def stamp():return datetime.now(ZoneInfo('Asia/Shanghai')).isoformat(timespec='seconds')
+
+def validate_grade_contract(schema):
+    """Reject a broken scoring contract before spending a model request."""
+    quality=schema.get('properties',{}).get('quality_score')
+    if quality is None:return
+    props=quality.get('properties',{})
+    for key in ('completeness','reversal','fun'):
+        field=props.get(key,{})
+        if field.get('type')!='integer' or field.get('minimum')!=0 or field.get('maximum')!=100 or 'enum' in field:
+            raise ValueError('评分输出约束异常：'+key+'必须为独立的0至100整数，已阻止本次模型请求')
+
+def restricted_grade_contract(schema):
+    """Evidence of a broken saved contract, never infer it from low scores alone."""
+    props=schema.get('properties',{}).get('quality_score',{}).get('properties',{})
+    for key in ('completeness','reversal','fun'):
+        field=props.get(key,{})
+        if field.get('enum')==[1,2]:return '评分维度误用了标题候选编号的1或2约束'
+    return ''
 
 def install_schema(c):
     cols={r[1] for r in c.execute('PRAGMA table_info(results)')}

@@ -142,6 +142,8 @@ class Providers:
         return {'ok':p.returncode==0,'message':(p.stdout+p.stderr).strip()[:500]}
 
     def call(self, prompt, schema, settings, folder, on_event=None):
+        from article_quality import validate_grade_contract
+        validate_grade_contract(schema)
         folder=Path(folder);folder.mkdir(parents=True,exist_ok=True)
         (folder/'prompt.txt').write_text(prompt,encoding='utf8')
         (folder/'schema.json').write_text(json.dumps(schema,ensure_ascii=False,indent=2),encoding='utf8')
