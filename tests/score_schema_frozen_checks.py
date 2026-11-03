@@ -28,7 +28,7 @@ with (folder/'backend.log').open('wb') as log:
         def api(route,body=None):
             request=Request(f'http://127.0.0.1:{port}'+route,data=None if body is None else json.dumps(body).encode(),headers={'Content-Type':'application/json','X-Workbench-Token':token})
             with urlopen(request,timeout=15) as response:return json.loads(response.read())
-        assert api('/health')['version']=='0.23.2'
+        assert api('/health')['version']==json.loads((ROOT/'package.json').read_text(encoding='utf8'))['version']
         api('/settings',{'provider':'api','api_base':f'http://127.0.0.1:{web.server_port}/v1','api_model':'fixture','api_key':'fixture-key','api_retry_count':0,'process_workers':1,'write_workers':1,'allowed_categories':['搞笑']})
         source=folder/'source.csv'
         with source.open('w',encoding='utf8',newline='') as f:csv.writer(f).writerows([['标题','正文','分类'],['借钱午饭',article,'搞笑']])
@@ -41,7 +41,7 @@ with (folder/'backend.log').open('wb') as log:
         assert row['state']=='completed' and row['done']==1 and row['errors']==0,row
         results=api('/results')['rows'];assert len(results)==1 and results[0]['score']==94,results
         assert len(seen)==2 and sum('quality_score' in s.get('properties',{}) for s in seen)==1
-        report={'ok':True,'frozen_backend_version':'0.23.2','actual_local_requests':2,'stored_score':94,'percentage_schema_in_actual_request':True,'title_choice_still_binary':True,'external_model_calls':0,'production_changes':0}
+        report={'ok':True,'frozen_backend_version':json.loads((ROOT/'package.json').read_text(encoding='utf8'))['version'],'actual_local_requests':2,'stored_score':94,'percentage_schema_in_actual_request':True,'title_choice_still_binary':True,'external_model_calls':0,'production_changes':0}
         (ROOT/'build/score-schema-frozen-checks.json').write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf8');print(json.dumps(report,ensure_ascii=False))
     finally:
         if p.poll() is None:subprocess.run(['taskkill','/PID',str(p.pid),'/T','/F'],capture_output=True,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))

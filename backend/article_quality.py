@@ -86,7 +86,7 @@ def after_generated(c,eid,answer):
     row=c.execute('SELECT * FROM results WHERE extraction_id=?',(eid,)).fetchone();reset(c,row['id'])
     if row['category']=='搞笑' and answer.get('quality_score'):
         try:apply(c,row,answer['quality_score'])
-        except ValueError as exc:c.execute('UPDATE results SET score_json=? WHERE id=?',(json.dumps({'error':str(exc)},ensure_ascii=False),row['id']))
+        except ValueError as exc:c.execute("UPDATE results SET score_status='score_failed',score_json=? WHERE id=?",(json.dumps({'error':str(exc)},ensure_ascii=False),row['id']))
 
 def valid_score(row):
     from title_push import signature

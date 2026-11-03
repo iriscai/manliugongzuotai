@@ -20,7 +20,7 @@ function resultControls(options,categories){return `<section class="panel result
  ${typeof operatorResultSourceMarkup==='function'?operatorResultSourceMarkup():''}
  <label class="result-filter result-category-filter"><span>文章赛道</span><select id="category-filter" aria-label="生成文章赛道">${resultCategoryOptions(categories)}</select></label>
  ${selectField('推送状态','push',[['','全部'],['not_pushed','未推送'],['pending','等待接收'],['pushed','已推送'],['failed','推送失败']])}
- ${selectField('作品评分','score_band',[['','全部评分'],['excellent','搞笑 ≥90分'],['good','搞笑 80—89分'],['low','搞笑 <80分'],['pending','搞笑待评分'],['default','其他赛道默认60分']])}
+ ${selectField('作品评分','score_band',[['','全部评分'],['excellent','搞笑 ≥90分'],['good','搞笑 80—89分'],['low','搞笑 <80分'],['pending','搞笑待评分（全部）'],['rescore','搞笑待重新评分'],['score_failed','搞笑评分失败'],['default','其他赛道默认60分']])}
  ${selectField('文章位置','visibility',[['active','结果库'],['cleared','已归档（'+options.cleared+'）'],['all','全部（含已归档）'],['deleted','已删除']])}
  ${managementButton('重置筛选','reset-filters')}
  <details class="operator-result-advanced"><summary>更多筛选 · 批次、规则、日期与排序${resultView.batch||resultView.rule||resultView.date_from||resultView.date_to?'（有条件已应用）':''}</summary><div>
@@ -38,6 +38,7 @@ results=async function(){
  return `<div class="toolbar"><div class="search"><span>⌕</span><input id="list-search" aria-label="搜索结果文章" placeholder="搜索标题或正文关键词" value="${esc(state.q)}"></div></div>`+resultControls(resultOptions,r.categories||[])+`<section class="panel push-tools"><div><strong>${resultView.visibility==='cleared'?'已归档文章，可恢复到结果库':'文章批量操作'}</strong><p>勾选可跨页保留。重生成仅复用所选文章的种子；新稿成功后替换，旧稿自动留存。</p></div><div class="push-buttons"><span>已选 <b>${pushSelection.size}</b> 篇</span>
  ${managementButton('勾选当前筛选全部','select-filtered',managementBusy?'disabled':'')}
  <button class="btn small" data-push-action="clear" ${pushBusy?'disabled':''}>清空勾选</button>
+ ${typeof scoreSelectionControls==='function'?scoreSelectionControls():''}
  <details class="operator-article-more"><summary class="btn soft-gray">更多文章操作</summary><div class="operator-article-more-menu">
  <button class="btn small" data-quality-action="mapping">推送匹配 / 评分分流</button>
  ${managementButton('导出勾选','export-selected',!pushSelection.size?'disabled':'')}
@@ -45,7 +46,7 @@ results=async function(){
  ${managementButton('按最新规则重新生成','regenerate',!pushSelection.size||activeRun()||managementBusy?'disabled':'')}
  ${resultView.visibility!=='active'?managementButton('恢复勾选文章','restore-cleared',!pushSelection.size?'disabled':''):''}${typeof libraryAction==='function'?libraryAction(resultView.visibility==='deleted'?'恢复勾选文章':'删除勾选文章','results',resultView.visibility==='deleted'?'restore':'delete','',!pushSelection.size):''}</div></details>
  <button class="btn primary" data-push-action="send" ${!pushSelection.size||pushBusy||resultView.visibility==='cleared'?'disabled':''}>一键推送勾选文章</button>${typeof operatorPushButtonMarkup==='function'?operatorPushButtonMarkup():''}
- </div>${typeof operatorReceiptPanelMarkup==='function'?operatorReceiptPanelMarkup():''}</section>${typeof operatorSelectionPanelMarkup==='function'?operatorSelectionPanelMarkup():''}
+ </div>${typeof operatorReceiptPanelMarkup==='function'?operatorReceiptPanelMarkup():''}</section>${typeof scoreJobPanels==='function'?scoreJobPanels():''}${typeof operatorSelectionPanelMarkup==='function'?operatorSelectionPanelMarkup():''}
  <div class="result-scope-note">共 ${num(r.total)} 篇符合条件 · 跨页勾选不会随筛选自动取消
  <button class="text-btn danger" data-push-action="cleanup" title="覆盖所有分页和筛选；仅归档已确认推送的当前版本" ${!pushClearable||pushBusy?'disabled':''}>归档全部已推送（${pushClearable}）</button></div>`+
  (r.rows.length?`<section class="panel"><div class="table-wrap"><table class="data-table article-results managed-results"><thead><tr>

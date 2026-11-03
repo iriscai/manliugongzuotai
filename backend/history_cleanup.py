@@ -54,19 +54,20 @@ def safe_file(root,path):
         return {'path':absolute.relative_to(root).as_posix(),'size':stat.st_size,'mtime_ns':stat.st_mtime_ns}
     except (OSError,ValueError):return None
 
-def cleanup_files(store,c,run_ids,body_ids,opts,cutoff):
+def cleanup_files(store,c,run_ids,body_ids,opts,cutoff,score_ids=()):
     root=store.root.resolve();found={};limit=datetime.fromisoformat(cutoff).timestamp()
     def add(path):
         item=safe_file(root,path)
         if item and item['mtime_ns']/1e9<limit:found[item['path']]=item
     if opts['files'] and opts['records']:
-        for folder,table,selected in [('runs','runs',set(run_ids)),('body_fetch','body_jobs',set(body_ids))]:
+        for folder,table,selected in [('runs','runs',set(run_ids)),('body_fetch','body_jobs',set(body_ids)),('score-runs','score_jobs',set(score_ids))]:
             base=root/folder
             if not base.is_dir() or is_link(base):continue
             retained={r[0] for r in c.execute('SELECT id FROM '+table)}-selected
             for directory in base.iterdir():
                 if not directory.is_dir() or is_link(directory) or directory.name in retained or not re.fullmatch(r'[A-Za-z0-9_-]{1,100}',directory.name):continue
-                if directory.name not in selected and not re.fullmatch(r'[0-9a-f]{12}' if folder=='runs' else r'body_[0-9a-f]{12}',directory.name):continue
+                pattern=r'[0-9a-f]{12}' if folder=='runs' else r'score_[0-9a-f]{12}' if folder=='score-runs' else r'body_[0-9a-f]{12}'
+                if directory.name not in selected and not re.fullmatch(pattern,directory.name):continue
                 for current,dirs,files in os.walk(directory,followlinks=False):
                     dirs[:]=[n for n in dirs if not is_link(Path(current)/n)]
                     for name in files:add(Path(current)/name)
@@ -76,32 +77,37 @@ def cleanup_files(store,c,run_ids,body_ids,opts,cutoff):
     return sorted(found.values(),key=lambda r:r['path'])
 
 def selection(store,c,opts,cutoff):
-    specs={};run_ids=[];body_ids=[];queue_ids=[]
+    specs={};run_ids=[];body_ids=[];queue_ids=[];score_ids=[]
     protected=protected_run()
     run_time="coalesce(nullif(j.updated_at,''),j.created_at)"
     if opts['records']:
         run_ids=[r[0] for r in c.execute('SELECT j.id FROM runs j WHERE NOT '+protected+' AND '+older(run_time)+' ORDER BY j.id',(cutoff,))]
         body_ids=[r[0] for r in c.execute("SELECT b.id FROM body_jobs b WHERE b.state='completed' AND NOT EXISTS(SELECT 1 FROM runs j WHERE j.id=b.parent_run AND "+protected+') AND '+older("coalesce(nullif(b.updated_at,''),b.created_at)")+' ORDER BY b.id',(cutoff,))]
         queue_ids=[r[0] for r in c.execute("SELECT id FROM model_queue WHERE state='completed' AND "+older("coalesce(nullif(updated_at,''),created_at)")+' ORDER BY id',(cutoff,))]
+        score_ids=[r[0] for r in c.execute("SELECT j.id FROM score_jobs j WHERE j.state='completed' AND NOT EXISTS(SELECT 1 FROM score_items i WHERE i.job_id=j.id AND i.state IN ('queued','scoring','failed')) AND "+older("coalesce(nullif(j.updated_at,''),j.created_at)")+' ORDER BY j.id',(cutoff,))]
         for table,column,ids in [('run_items','run_id',run_ids),('run_writes','run_id',run_ids),('run_article_slots','run_id',run_ids),('runs','id',run_ids),('body_items','job_id',body_ids),('body_jobs','id',body_ids),('model_queue_items','job_id',queue_ids),('model_queue','id',queue_ids)]:specs[table]=in_ids(column,ids)
         specs['model_queue_runs']=("job_id IN (SELECT value FROM json_each(?)) OR run_id IN (SELECT value FROM json_each(?))",[encoded(queue_ids),encoded(run_ids)])
         specs['model_requests']=("state<>'running' AND "+older("coalesce(nullif(completed_at,''),created_at)")+" AND (run_id IN (SELECT value FROM json_each(?)) OR (NOT EXISTS(SELECT 1 FROM runs j WHERE j.id=model_requests.run_id) AND NOT EXISTS(SELECT 1 FROM model_queue_runs qr JOIN model_queue q ON q.id=qr.job_id WHERE qr.run_id=model_requests.run_id AND q.state<>'completed')))",[cutoff,encoded(run_ids)])
+        specs['score_items']=in_ids('job_id',score_ids);specs['score_jobs']=in_ids('id',score_ids)
+        where,args=specs['model_requests'];specs['model_requests']=(where+" AND (run_id IN (SELECT value FROM json_each(?)) OR NOT EXISTS(SELECT 1 FROM score_jobs sj WHERE sj.id=model_requests.run_id))",args+[encoded(score_ids)])
     if opts['logs']:
         specs['events']=(older('created_at')+" AND NOT EXISTS(SELECT 1 FROM runs j WHERE j.id=events.run_id AND "+protected+") AND NOT EXISTS(SELECT 1 FROM body_jobs b WHERE b.id=events.run_id AND b.state<>'completed') AND NOT EXISTS(SELECT 1 FROM model_queue q WHERE q.id=events.run_id AND q.state<>'completed')",[cutoff])
+        where,args=specs['events'];specs['events']=(where+" AND NOT EXISTS(SELECT 1 FROM score_jobs sj WHERE sj.id=events.run_id AND (sj.state<>'completed' OR EXISTS(SELECT 1 FROM score_items si WHERE si.job_id=sj.id AND si.state='failed')))",args)
     counts={};fingerprint=hashlib.sha256()
     for table,(where,args) in sorted(specs.items()):
         fingerprint.update(table.encode());count=0
         for row in c.execute('SELECT * FROM '+table+' WHERE '+where+' ORDER BY rowid',args):
             fingerprint.update(encoded(list(row)).encode('utf8'));fingerprint.update(b'\n');count+=1
         counts[table]=count
-    files=cleanup_files(store,c,run_ids,body_ids,opts,cutoff);fingerprint.update(encoded(files).encode('utf8'))
+    files=cleanup_files(store,c,run_ids,body_ids,opts,cutoff,score_ids);fingerprint.update(encoded(files).encode('utf8'))
     protected_count=c.execute('SELECT count(*) FROM runs j WHERE '+protected+' AND '+older(run_time),(cutoff,)).fetchone()[0]
     protected_count+=c.execute("SELECT count(*) FROM body_jobs WHERE state<>'completed' AND "+older("coalesce(nullif(updated_at,''),created_at)"),(cutoff,)).fetchone()[0]
     protected_count+=c.execute("SELECT count(*) FROM model_queue WHERE state<>'completed' AND "+older("coalesce(nullif(updated_at,''),created_at)"),(cutoff,)).fetchone()[0]
+    protected_count+=c.execute("SELECT count(*) FROM score_jobs sj WHERE (state<>'completed' OR EXISTS(SELECT 1 FROM score_items si WHERE si.job_id=sj.id AND si.state='failed')) AND "+older("coalesce(nullif(updated_at,''),created_at)"),(cutoff,)).fetchone()[0]
     return {'specs':specs,'counts':counts,'files':files,'digest':fingerprint.hexdigest(),'protected_tasks':protected_count}
 
 def busy(c):
-    return any(c.execute('SELECT 1 FROM '+table+" WHERE state IN ('running','pausing') LIMIT 1").fetchone() for table in ['runs','body_jobs']) or bool(c.execute("SELECT 1 FROM model_queue WHERE state IN ('queued','waiting','running') LIMIT 1").fetchone())
+    return any(c.execute('SELECT 1 FROM '+table+" WHERE state IN ('running','pausing') LIMIT 1").fetchone() for table in ['runs','body_jobs','score_jobs']) or bool(c.execute("SELECT 1 FROM model_queue WHERE state IN ('queued','waiting','running') LIMIT 1").fetchone())
 
 def preview(store,payload):
     opts=options(payload);current=clock();cutoff=cutoff_for(opts['period'],current).isoformat(timespec='seconds')
@@ -140,7 +146,7 @@ def apply(store,payload):
             if temporary.exists():temporary.unlink()
             raise
         # Only the explicit history-table allowlist can be deleted.
-        for table in ['events','model_requests','run_article_slots','run_writes','run_items','body_items','model_queue_items','model_queue_runs','body_jobs','model_queue','runs']:
+        for table in ['events','model_requests','run_article_slots','run_writes','run_items','body_items','model_queue_items','model_queue_runs','score_items','score_jobs','body_jobs','model_queue','runs']:
             if table in plan['specs']:
                 where,args=plan['specs'][table];c.execute('DELETE FROM '+table+' WHERE '+where,args)
         c.execute('DELETE FROM history_cleanup_previews WHERE id=?',(previous['id'],))

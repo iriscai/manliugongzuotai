@@ -117,6 +117,8 @@ class Store:
             install_material_workflow(c)
             from usability import install_schema as install_usability
             install_usability(c)
+            from score_jobs import install_schema as install_score_jobs
+            install_score_jobs(c)
             for r in c.execute("SELECT id FROM runs WHERE state NOT IN ('running','pausing') AND summary_json='' ").fetchall():pipeline.freeze_summary(c,r['id'])
             for r in c.execute("SELECT id FROM materials WHERE body_status='image' AND deleted_at=\'\'").fetchall():self.remove_material_in(c,r['id'],'image_only')
             for r in c.execute("SELECT id FROM materials WHERE body<>'' AND qualification='pending' ORDER BY id").fetchall():self.qualify_in(c,r['id'])

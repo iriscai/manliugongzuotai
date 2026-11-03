@@ -1,6 +1,6 @@
 # 漫流工作台
 
-Windows 桌面素材处理工作台，当前版本 **V0.23.2**。使用 Electron 界面、Python 本机服务和 SQLite 数据库，完成以下流程：
+Windows 桌面素材处理工作台，当前版本 **V0.24.0**。使用 Electron 界面、Python 本机服务和 SQLite 数据库，完成以下流程：
 
 **导入素材 → 获取正文 → 标题及正文去重验收 → 按赛道提炼主题 → 改写生文与评分 → 推送生图工具标题库。**
 
@@ -12,6 +12,7 @@ Windows 桌面素材处理工作台，当前版本 **V0.23.2**。使用 Electron
 - 生文可选择本机已登录的 Codex 或兼容中转 API，支持并发、预算、执行记录及失败任务重试。
 - 搞笑 I/J 在一次模型响应中完成多阶段稿件修订、T1/T2 标题处理和评分；其他赛道沿用各自规则。
 - API 临时故障有限重试，额度不足暂停；辅助字段兼容修复保留真实内容校验，合格的已保存失败响应可在匹配条件后复用。
+- 结果库支持跨页勾选待评/失败稿件独立重新评分，保留原稿，支持并发、暂停继续、失败重试与调用用量记录。
 - 成品按赛道与评分分流推送，记录接收回执和重试状态；支持归档、删除恢复和历史执行记录清理。
 
 ## 源码运行
@@ -72,6 +73,7 @@ build_portable.py      原开发机历史便携包构建脚本
 在准备好 Python 环境后，可运行不调用付费模型的隔离回归检查：
 
 ```powershell
+.\.venv\Scripts\python.exe -X utf8 tests/bulk_score_checks.py
 .\.venv\Scripts\python.exe -X utf8 tests/score_schema_checks.py
 .\.venv\Scripts\python.exe -X utf8 tests/api_transport_checks.py
 .\.venv\Scripts\python.exe -X utf8 tests/task_pause_checks.py

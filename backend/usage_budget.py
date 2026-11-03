@@ -15,7 +15,7 @@ def install_schema(c):
       CREATE INDEX IF NOT EXISTS idx_requests_run ON model_requests(run_id,id);''')
     c.execute("UPDATE model_requests SET state='interrupted',completed_at=? WHERE state='running'",(now(),))
 
-def reserve(store,rid,mid,stage,settings):
+def reserve(store,rid,mid,stage,settings,limits_run_override=None):
     from providers import ProviderLimit
     with store.connect() as c:
         c.execute('BEGIN IMMEDIATE')
@@ -23,6 +23,7 @@ def reserve(store,rid,mid,stage,settings):
         used=c.execute('SELECT COUNT(*) n,coalesce(SUM(total_tokens),0) tokens FROM model_requests WHERE day=?',(day(),)).fetchone()
         record=c.execute('SELECT snapshot_json FROM runs WHERE id=?',(rid,)).fetchone()
         limits_run=json.loads(record['snapshot_json']).get('task_budget',{}) if record else {}
+        if limits_run_override is not None:limits_run=limits_run_override
         used_run=c.execute('SELECT count(*) n,coalesce(sum(total_tokens),0) tokens FROM model_requests WHERE run_id=?',(rid,)).fetchone()
         if limits_run.get('request_limit',0) and used_run['n']>=limits_run['request_limit']:raise ProviderLimit('已达到本轮请求上限，成果和种子已保留，可提高本轮上限续跑')
         if limits_run.get('token_limit',0) and used_run['tokens']>=limits_run['token_limit']:raise ProviderLimit('已达到本轮已报告Token上限，成果和种子已保留')

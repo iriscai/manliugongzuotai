@@ -61,7 +61,9 @@ class ModelQueue:
                 for i in selected['ids']:
                     m=c.execute('SELECT body,title FROM materials WHERE id=?',(i,)).fetchone()
                     c.execute('INSERT INTO model_queue_items(job_id,material_id,source_hash,has_body,title_url_hash,title) VALUES(?,?,?,?,?,?)',(jid,i,selected['expected_hashes'][str(i)],bool(m['body']),selected['expected_urls'][str(i)],m['title']))
-            self.draining=False;return {'job_id':jid,'total':len(selected['ids'])}
+            self.draining=False
+            if getattr(self.worker,'score_manager',None):self.worker.score_manager.limit_blocked=False
+            return {'job_id':jid,'total':len(selected['ids'])}
     def settings_hash(self,s,extraction_mode=None,legacy=False):
         from operations import configuration_hash
         if extraction_mode is not None:s={**s,'extraction_mode':extraction_mode}
@@ -100,6 +102,7 @@ class ModelQueue:
                         c.execute("UPDATE model_queue SET run_id='' WHERE id=?",(jid,));row=dict(row);row['run_id']=''
                 c.execute("UPDATE model_queue SET state=?,user_paused=0,updated_at=? WHERE id=?",('running' if row['run_id'] else 'queued',now(),jid))
             self.draining=False
+            if getattr(self.worker,'score_manager',None):self.worker.score_manager.limit_blocked=False
         return {'ok':True}
     def drain(self):
         with self.worker.lock,self.lock:
@@ -116,7 +119,7 @@ class ModelQueue:
                     if run['state']!='completed':c.execute("UPDATE model_queue SET state='paused',error='执行已暂停或额度受限，可从任务历史续跑',updated_at=? WHERE id=?",(now(),job['id']));continue
                     failed=c.execute("SELECT 1 FROM run_items WHERE run_id=? AND state='failed'",(job['run_id'],)).fetchone()
                     c.execute('UPDATE model_queue SET state=?,run_id=?,error=?,updated_at=? WHERE id=?',('paused' if failed or job['user_paused'] else 'queued',job['run_id'] if failed else '', '部分素材失败，请从任务历史重试' if failed else '',now(),job['id']))
-            if self.draining or self.worker.thread and self.worker.thread.is_alive():return
+            if self.draining or self.worker.thread and self.worker.thread.is_alive() or getattr(getattr(self.worker,'score_manager',None),'limit_blocked',False):return
             with self.store.connect() as c:job=c.execute("SELECT * FROM model_queue WHERE state IN ('queued','waiting') ORDER BY created_at,id LIMIT 1").fetchone()
             if not job:return
             payload=json.loads(job['payload']);settings=self.store.settings()

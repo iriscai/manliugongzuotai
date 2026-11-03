@@ -23,7 +23,7 @@ from model_queue import ModelQueue,preview as queue_preview
 from category_distribution import distribution
 import history_cleanup
 
-APP_VERSION='0.23.2'
+APP_VERSION='0.24.0'
 
 
 def main():
@@ -41,6 +41,8 @@ def main():
         except Exception:info['traceback']=traceback.format_exc()
         print(json.dumps(info,ensure_ascii=False),flush=True);return
     store=Store(args.data,args.resources);body_fetcher=BodyFetcher(store);worker=Worker(store,body_fetcher);pusher=TitlePusher(store)
+    from score_jobs import ScoreJobs,select_pending as select_pending_scores
+    scorer=ScoreJobs(store,worker)
     model_queue=ModelQueue(store,worker);model_queue.start()
     (store.root/'runtime_state.json').write_text(dumps({'version':APP_VERSION,'writing_policy':POLICY_VERSION}),encoding='utf8')
     token=os.environ.get('COMIC_WORKBENCH_TOKEN','')
@@ -64,9 +66,9 @@ def main():
                     if n>4*1024*1024:raise ValueError('请求内容过大')
                     data=json.loads(self.rfile.read(n) or b'{}')
                     if not isinstance(data,dict):raise ValueError('请求必须为对象')
-                if model_queue.draining and method=='POST' and path in ('/run/start','/run/enqueue','/run/resume','/run/retry','/run/retry-seeds','/results/regenerate','/run/queue-resume','/body/start','/body/retry','/body/resume','/body/continue-queue'):raise ValueError('正在保存当前步骤后退出，暂不接受新任务；重新打开工作台后可继续')
+                if model_queue.draining and method=='POST' and path in ('/run/start','/run/enqueue','/run/resume','/run/retry','/run/retry-seeds','/results/regenerate','/run/queue-resume','/body/start','/body/retry','/body/resume','/body/continue-queue','/results/score-start','/results/score-resume','/results/score-retry'):raise ValueError('正在保存当前步骤后退出，暂不接受新任务；重新打开工作台后可继续')
                 if method=='GET' and path=='/health':out={'ok':True,'version':APP_VERSION,'import_dedup':'title_and_body','extraction_scheme':'adaptive_topics_v1','output_mode':'article','verification_policy':'direct_seed','writing_policy':POLICY_VERSION}
-                elif method=='GET' and path=='/stats':out=store.stats()
+                elif method=='GET' and path=='/stats':out=store.stats();out['scoring']=scorer.list()
                 elif method=='GET' and path=='/stats/distribution':out=distribution(store,q)
                 elif method=='GET' and path=='/run/detail':out=run_detail(store,q)
                 elif method=='GET' and path=='/run/writing':out=writing_detail(store,q)
@@ -131,6 +133,14 @@ def main():
                     with worker.lock,pusher.lock:out=__import__('title_push').save_mapping(store,data)
                 elif method=='POST' and path=='/results/score':
                     with worker.lock,pusher.lock:out=__import__('article_quality').set_score(store,data)
+                elif method=='POST' and path=='/results/score-select':out=select_pending_scores(store,data.get('filters',{}))
+                elif method=='POST' and path=='/results/score-preview':out=scorer.preview(data)
+                elif method=='POST' and path=='/results/score-start':out=scorer.start(data['id'])
+                elif method=='GET' and path=='/results/score-jobs':out=scorer.list()
+                elif method=='GET' and path=='/results/score-job':out=scorer.detail(q['id'])
+                elif method=='POST' and path=='/results/score-pause':out=scorer.pause(data['id'])
+                elif method=='POST' and path=='/results/score-resume':out=scorer.resume(data['id'])
+                elif method=='POST' and path=='/results/score-retry':out=scorer.resume(data['id'],True)
                 elif method=='GET' and path.startswith('/results/detail/'):
                     pusher.sync();out=management.detail(store,int(path.split('/')[-1]))
                 elif method=='GET' and path=='/run/usage':

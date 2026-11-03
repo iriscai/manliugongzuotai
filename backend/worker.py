@@ -124,12 +124,14 @@ class Worker(ParallelExecution):
         return self.start({'mode':'write','seed_ids':ids,'regenerate':True})
 
     def _launch(self,rid):
+        if getattr(self,'score_manager',None):self.score_manager.limit_blocked=False
         self.current_run=rid;self.pause_flag.clear();
         if hasattr(self.provider,'reset'):self.provider.reset()
         self.thread=threading.Thread(target=self._run,args=(rid,),daemon=True);self.thread.start()
 
     def pause(self,rid=None):
         with self.lock:
+            if getattr(self,'score_manager',None) and self.score_manager.active_id:return self.score_manager.pause(rid)
             current=self.current_run
             if rid and rid!=current:raise ValueError('该任务已结束或不是当前运行任务，请刷新')
             if not current or not self.thread or not self.thread.is_alive():return {'ok':True,'message':'当前没有运行中的提炼或写文任务'}

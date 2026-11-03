@@ -1,7 +1,7 @@
 // Scores describe the exact current published text; ordinary lanes use a labeled default.
 function qualityCell(x){
  const pending=x.score===null||x.score===undefined;
- return `<span class="pill ${pending?'amber':x.score>=90?'green':x.score>=80?'blue':''}">${pending?(x.score_status==='invalid_contract'?'待重新评分':'待评分'):x.score+'分'}</span><small>${x.category==='搞笑'?'模型语义评分 / 可复核':'默认分 · 未做质量评价'}</small><small class="quality-target">${esc(x.push_category?'→ '+x.push_category:x.push_block_reason||'暂不推送')}</small>${x.category==='搞笑'?`<button class="text-btn" data-quality-action="detail" data-id="${x.id}">评分明细 / 复核</button>`:''}`;
+ return `<span class="pill ${pending?'amber':x.score>=90?'green':x.score>=80?'blue':''}">${pending?(x.score_status==='invalid_contract'?'待重新评分':x.score_status==='score_failed'?'评分失败':'待评分'):x.score+'分'}</span><small>${x.category==='搞笑'?'模型语义评分 / 可复核':'默认分 · 未做质量评价'}</small><small class="quality-target">${esc(x.push_category?'→ '+x.push_category:x.push_block_reason||'暂不推送')}</small>${x.category==='搞笑'?`<button class="text-btn" data-quality-action="detail" data-id="${x.id}">评分明细 / 复核</button>${pending?`<button class="text-btn" data-rescore="one" data-id="${x.id}" ${activeRun()||state.stats?.scoring?.active_id||(typeof scoreBusy!=='undefined'&&scoreBusy)?'disabled':''}>重新评分</button>`:''}`:''}`;
 }
 const beforeQualityDraw=drawArticle;
 drawArticle=function(){

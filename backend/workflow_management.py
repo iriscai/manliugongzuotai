@@ -110,6 +110,8 @@ def query_parts(store,q):
         band=q['score_band']
         if band=='default':where.append("r.category<>'搞笑'")
         elif band=='pending':where.append("r.category='搞笑' AND (r.score_status<>'scored' OR r.score_content_hash<>result_signature(r.category,r.title,r.article))")
+        elif band=='rescore':where.append("r.category='搞笑' AND r.score_status='invalid_contract'")
+        elif band=='score_failed':where.append("r.category='搞笑' AND (r.score_status='score_failed' OR (r.score_status='pending' AND json_valid(r.score_json) AND json_extract(r.score_json,'$.error') IS NOT NULL))")
         elif band in ('excellent','good','low'):
             where.append("r.category='搞笑' AND r.score_status='scored' AND r.score_content_hash=result_signature(r.category,r.title,r.article)")
             where.append({'excellent':'r.score>=90','good':'r.score BETWEEN 80 AND 89','low':'r.score<80'}[band])
