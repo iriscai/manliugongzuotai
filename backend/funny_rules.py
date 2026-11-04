@@ -6,6 +6,9 @@ VARIANTS=tuple('ABCDEFGHIJ')
 
 def selected_variant(snapshot,category,kind,fallback):
     selected=fallback
+    if category=='军事':
+        from military_profile import selected as military_selected
+        selected=military_selected(snapshot,kind,fallback)
     if category=='搞笑':
         configured=snapshot['settings'].get('funny_'+kind+'_variant','follow')
         if configured!='follow':

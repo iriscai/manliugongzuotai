@@ -1,8 +1,14 @@
 # 漫流工作台
 
-Windows 桌面素材处理工作台，当前版本 **V0.24.0**。使用 Electron 界面、Python 本机服务和 SQLite 数据库，完成以下流程：
+Windows 桌面素材处理工作台，当前版本 **V0.25.0**。使用 Electron 界面、Python 本机服务和 SQLite 数据库，完成以下流程：
 
 **导入素材 → 获取正文 → 标题及正文去重验收 → 按赛道提炼主题 → 改写生文与评分 → 推送生图工具标题库。**
+
+## 本机迁移位置（2026-11-04）
+
+正式程序：`E:\漫流工作台\程序\漫画文章工作台.exe`。正式数据库：`E:\漫流工作台\程序\data\workbench.sqlite3`。源码及 Git：`E:\漫流工作台\项目\desktop-workbench`。桌面原快捷方式已切换到 E 盘。原 C 盘路径以目录链接兼容历史文件记录，迁移前副本单独保留用于回退。
+
+本次 V0.25.0 已本地正式发布；源码仓库为 [iriscai/manliugongzuotai](https://github.com/iriscai/manliugongzuotai)，运行数据保留本机。完整迁移校验记录在 `E:\漫流工作台\迁移记录`。
 
 ## 功能
 

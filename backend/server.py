@@ -23,7 +23,7 @@ from model_queue import ModelQueue,preview as queue_preview
 from category_distribution import distribution
 import history_cleanup
 
-APP_VERSION='0.24.0'
+APP_VERSION='0.25.0'
 
 
 def main():
@@ -177,6 +177,10 @@ def main():
                         if key in data:
                             from funny_rules import VARIANTS
                             if data[key] not in (*VARIANTS,'follow'):raise ValueError('搞笑赛道方案需为A至J或跟随全局')
+                            values[key]=data[key]
+                    for key in ['military_extract_variant','military_write_variant']:
+                        if key in data:
+                            if data[key] not in ('A','B','C','follow'):raise ValueError('军事方案需为A、B、C或跟随全局')
                             values[key]=data[key]
                     for key in ['process_workers','write_workers']:
                         if key in data:values[key]=concurrency(data[key])

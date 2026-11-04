@@ -9,7 +9,7 @@ const token = crypto.randomBytes(32).toString('hex');
 const dataDir = process.env.COMIC_DATA_DIR || path.join(app.isPackaged ? path.dirname(app.getPath('exe')) : __dirname, 'data');
 const resources = path.join(__dirname, 'resources');
 const devPython = process.env.COMIC_PYTHON || 'C:\\Users\\74319\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\python\\python.exe';
-if(process.env.COMIC_DATA_DIR){const isolatedSession=path.join(dataDir,'.app-session');fs.mkdirSync(isolatedSession,{recursive:true});app.setPath('userData',isolatedSession);}
+const appSession=path.join(dataDir,'.app-session');fs.mkdirSync(appSession,{recursive:true});app.setPath('userData',appSession);
 const ownsInstance = app.requestSingleInstanceLock();
 if (!ownsInstance) app.quit();
 function showMainWindow(){
@@ -47,7 +47,7 @@ app.on('activate', showMainWindow);
 async function startBackend(){
   fs.mkdirSync(dataDir,{recursive:true});
   const exe = path.join(__dirname,'backend','comic-backend.exe');
-  const useExe=fs.existsSync(exe);
+  const useExe=fs.existsSync(exe)&&process.env.COMIC_SOURCE_ONLY!=='1';
   const args=useExe ? [] : ['-X','utf8','-B',path.join(__dirname,'backend','server.py')];
   args.push('--data',dataDir,'--resources',resources);
   backend=spawn(useExe?exe:devPython,args,{windowsHide:true,env:{...process.env,COMIC_WORKBENCH_TOKEN:token},stdio:['ignore','pipe','pipe']});
@@ -67,7 +67,7 @@ ipcMain.handle('api',async(_event,route,options={})=>{
   const data=await response.json();if(!response.ok)throw new Error(data.error||'请求失败');return data;
 });
 ipcMain.handle('choose-file',async()=>{const r=await dialog.showOpenDialog(win,{title:'导入素材表',properties:['openFile'],filters:[{name:'素材表格',extensions:['xlsx','csv','tsv','jsonl']}]});return r.canceled?null:r.filePaths[0];});
-ipcMain.handle('save-file',async(_e,kind)=>{const r=await dialog.showSaveDialog(win,{title:'导出'+kind,defaultPath:kind+'.json',filters:[{name:'JSON完整记录',extensions:['json']},{name:'CSV表格',extensions:['csv']}]});return r.canceled?null:r.filePath;});
+ipcMain.handle('save-file',async(_e,kind)=>{const military=kind==='军事HTML';const r=await dialog.showSaveDialog(win,{title:'导出'+kind,defaultPath:kind+(military?'.html':'.json'),filters:military?[{name:'公众号HTML',extensions:['html']}]:[{name:'JSON完整记录',extensions:['json']},{name:'CSV表格',extensions:['csv']}]});return r.canceled?null:r.filePath;});
 ipcMain.handle('open-external',(_e,url)=>shell.openExternal(validateURL(url)));
 ipcMain.handle('open-data',()=>shell.openPath(dataDir));
 ipcMain.handle('choose-body-tool',async()=>{const r=await dialog.showOpenDialog(win,{title:'选择正文抓取工具.exe',properties:['openFile'],filters:[{name:'正文抓取程序',extensions:['exe']}]});return r.canceled?null:r.filePaths[0];});
@@ -81,7 +81,8 @@ if(ownsInstance)app.whenReady().then(async()=>{
     setupTray();win.on('close',event=>{if(!app.allowQuit){event.preventDefault();tray?win.hide():win.minimize();}});
     win.webContents.setWindowOpenHandler(({url})=>{shell.openExternal(validateURL(url)).catch(()=>{});return{action:'deny'};});
     win.webContents.on('will-navigate',(event,url)=>{if(!url.startsWith('file://'))event.preventDefault();});
-    await win.loadFile(path.join(__dirname,'renderer','index.html'));
+    await win.loadFile(path.join(__dirname,'renderer','index.html'),process.env.COMIC_DEV_LABEL?{query:{devLabel:process.env.COMIC_DEV_LABEL}}:{});
+    if(process.env.COMIC_DEV_LABEL)win.setTitle(process.env.COMIC_DEV_LABEL);
     showMainWindow();
   }catch(err){dialog.showErrorBox('工作台启动失败',err.message+'\n日志：'+path.join(dataDir,'backend.log'));app.quit();}
 });

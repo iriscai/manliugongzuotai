@@ -39,7 +39,11 @@ def compile_rules(snapshot,variant,categories=None):
         # Keep every rule paragraph; only exact shared paragraphs are factored out.
         text=rule['content'].replace('{{source}}','[素材见统一输入]').replace('{{requirements}}','[要求见统一输入]')
         paragraphs=[x.strip() for x in re.split(r'\n\s*\n',text) if x.strip()]
-        rules.append({'category':cat,'variant':actual_variant,'focus':catalog[cat]['element_focus'],'paragraphs':paragraphs})
+        focus=catalog[cat]['element_focus']
+        if cat=='军事' and actual_variant=='C':
+            from military_profile import FOCUS
+            focus=FOCUS
+        rules.append({'category':cat,'variant':actual_variant,'focus':focus,'paragraphs':paragraphs})
     frequencies=Counter(p for rule in rules for p in set(rule['paragraphs']))
     shared=list(dict.fromkeys(p for rule in rules for p in rule['paragraphs'] if frequencies[p]>1))
     specific=[{'category':r['category'],'variant':r['variant'],'element_focus':r['focus'],'rule':'\n\n'.join(p for p in r['paragraphs'] if p not in shared)} for r in rules]

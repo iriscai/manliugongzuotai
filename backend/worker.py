@@ -211,6 +211,8 @@ class Worker(ParallelExecution):
             from funny_metadata import output_contract
             from funny_singlecall import FUNNY_J_ARTICLE
             contract+=output_contract('J' if schema is FUNNY_J_ARTICLE else 'I')
+        from military_profile import SCHEMA as MILITARY_SCHEMA,CONTRACT as MILITARY_CONTRACT
+        if schema is MILITARY_SCHEMA:contract=MILITARY_CONTRACT
         if 'quality_score' in schema.get('properties',{}):
             from article_quality import GRADE_INSTRUCTION
             contract+=GRADE_INSTRUCTION
@@ -371,10 +373,10 @@ class Worker(ParallelExecution):
                 base_revision=prior['base_revision'] if prior and prior['base_revision'] else exists['content_revision'] if exists else 0
                 c.execute('INSERT OR REPLACE INTO run_writes(run_id,extraction_id,material_id,category,state,error,updated_at,base_revision) VALUES(?,?,?,?,?,?,?,?)',(rid,x['id'],mid,x['category'],write_state,'；'.join(verification),now(),base_revision))
             if (exists and not regenerating) or verification or mode=='extract':continue
-            if article_mode:prompt=article_prompt(prompt_for(x['category'],'write'),source,data,x['category'],x['angle'],settings.get('requirements',''))
-            else:prompt=self.template(prompt_for(x['category'],'write'),source,writing_context(data,x['category'],x['angle']),x['angle'],settings.get('requirements',''))+'\n本篇目标分类：'+x['category']+'\n本篇唯一主题：'+str(data.get('topic') or x['angle'])+'\n只围绕本主题写一篇文章，不把其他主题混进来。'
             from funny_rules import selected_variant
             write_variant=selected_variant(snapshot,x['category'],'write',variants['write'])
+            if article_mode:prompt=article_prompt(prompt_for(x['category'],'write'),source,data,x['category'],x['angle'],settings.get('requirements',''),write_variant)
+            else:prompt=self.template(prompt_for(x['category'],'write'),source,writing_context(data,x['category'],x['angle']),x['angle'],settings.get('requirements',''))+'\n本篇目标分类：'+x['category']+'\n本篇唯一主题：'+str(data.get('topic') or x['angle'])+'\n只围绕本主题写一篇文章，不把其他主题混进来。'
             if self.write_pool:futures.append(self.write_pool.submit(self._write_task,x,prompt,source_hash,rid,mid,snapshot,write_variant))
             else:self._write_task(x,prompt,source_hash,rid,mid,snapshot,write_variant)
         failures=[]

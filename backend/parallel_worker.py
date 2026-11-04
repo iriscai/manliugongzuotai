@@ -102,10 +102,19 @@ class ParallelExecution:
             from funny_singlecall import schema_for,audit_result,mode_for,MULTISTAGE_VARIANTS
             singlecall=article_mode and x['category']=='搞笑' and variant in MULTISTAGE_VARIANTS
             schema=schema_for(variant) if singlecall else ARTICLE if article_mode else WRITE
+            from military_profile import active as military_active,SCHEMA as MILITARY_SCHEMA,PROFILE as MILITARY_PROFILE
+            military=article_mode and military_active(x['category'],variant)
+            if military:schema=MILITARY_SCHEMA
             if article_mode and x['category']=='搞笑' and not singlecall:
                 from article_quality import scored_schema
                 schema=scored_schema(schema,x['category'])
             result=self.call('write',prompt,schema,rid,mid,snapshot,f'-{eid}')
+            military_folder=None
+            if military:
+                from military_profile import artifacts
+                material=s.material(mid,include_workflow=False)
+                source={'material_id':mid,'title':material['title'],'body':material['body'],'url':material['url']}
+                military_folder=artifacts(s,rid,mid,eid,source,json.loads(x['data_json']),result,snapshot)
             if singlecall:
                 from funny_metadata import normalize as normalize_metadata,validation_record
                 result,changes=normalize_metadata(result)
@@ -117,18 +126,20 @@ class ParallelExecution:
             else:audit=None
             quality=result.get('quality_score')
             format_metadata={key:result[key] for key in ('validation_audit','recovered_response') if key in result}
-            if article_mode:result,count,images=normalize_article(result,x['category'])
+            if article_mode:result,count,images=normalize_article(result,x['category'],MILITARY_PROFILE if military else None)
             else:count,images=self.check_result(result)
+            if military_folder:result['military_artifact_folder']=military_folder
             result.update(format_metadata)
             if audit:result.update(generation_audit=audit,generation_mode=mode_for(variant))
             if quality:result['quality_score']=quality
             result.update({'material_id':mid,'extraction_id':eid,'category':x['category'],'topic':json.loads(x['data_json']).get('topic') or x['angle'],'angle':x['angle'],'write_variant':variant,'source_hash':source_hash,'actual_images':0,'stage':'文案与分镜已完成，尚未出图'})
+            if military:result['stage']='军事自改稿·待用户确认'
             result['extraction_mode']=x.get('extraction_mode',snapshot.get('extraction_mode','multi'))
             seed_data=json.loads(x['data_json'])
             if seed_data.get('seed_origin')=='source_category_fallback':
                 result.update(seed_origin=seed_data['seed_origin'],fallback_reason=seed_data.get('fallback_reason',''))
             with s.connect() as c:
-                if article_mode:result['stage']='文章成品'
+                if article_mode and not military:result['stage']='文章成品'
                 from workflow_management import save_generated
                 saved=save_generated(c,result,eid,mid,rid,count,images,snapshot,variant)
                 c.execute("UPDATE run_article_slots SET state='completed' WHERE run_id=? AND extraction_id=?",(rid,eid))

@@ -119,6 +119,8 @@ class Store:
             install_usability(c)
             from score_jobs import install_schema as install_score_jobs
             install_score_jobs(c)
+            from military_profile import install as install_military_profile
+            install_military_profile(c,self.resources,now())
             for r in c.execute("SELECT id FROM runs WHERE state NOT IN ('running','pausing') AND summary_json='' ").fetchall():pipeline.freeze_summary(c,r['id'])
             for r in c.execute("SELECT id FROM materials WHERE body_status='image' AND deleted_at=\'\'").fetchall():self.remove_material_in(c,r['id'],'image_only')
             for r in c.execute("SELECT id FROM materials WHERE body<>'' AND qualification='pending' ORDER BY id").fetchall():self.qualify_in(c,r['id'])
@@ -369,6 +371,9 @@ class Store:
 
     def export(self, path, kind='results',ids=None,filters=None):
         path=Path(path);path.parent.mkdir(parents=True,exist_ok=True)
+        if kind=='military_html':
+            from military_profile import export_html
+            return export_html(self,path,ids)
         with self.connect() as c:
             if kind=='prompts': data=self.prompts()
             elif kind=='materials': data=[dict(r) for r in c.execute('SELECT * FROM materials WHERE deleted_at=\'\' ORDER BY id')]
