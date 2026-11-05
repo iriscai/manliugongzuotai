@@ -1,6 +1,6 @@
 """Persist the per-run topic scope independently from the global default."""
 DEFAULT='multi'
-LABELS={'single':'1→1 同赛道','multi':'1→N 多赛道'}
+LABELS={'direct':'原赛道直接写文','single':'历史 1→1 同赛道','multi':'历史 1→N 多赛道'}
 
 def normalize(value):
     if not isinstance(value,str) or value not in LABELS:

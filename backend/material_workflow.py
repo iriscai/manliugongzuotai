@@ -7,19 +7,13 @@ NODES=[
  ('body_paused','正文抓取已暂停','正文','本条仍待抓取，所属任务已暂停或中断。'),
  ('body_failed','正文抓取失败','正文','抓取失败，需重试或补正文。'),
  ('body_truncated','正文疑似截断','正文','正文不完整，未通过验收，需重新抓取或补充。'),
- ('body_unavailable','无有效正文／链接失效','正文','纯视频、无文字或失效链接不能进入提炼。'),
+ ('body_unavailable','无有效正文／链接失效','正文','纯视频、无文字或失效链接无法生文。'),
  ('source_review','待正文验收','正文','已有文本但尚未通过标题、正文及去重验收。'),
- ('extract_pending','正文就绪·待提炼','提炼','正文已通过验收，尚无当前有效主题。'),
- ('extract_queued','提炼排队中','提炼','已加入处理任务，等待模型提炼。'),
- ('extracting','提炼中','提炼','正在判断赛道或提炼主题及元素。'),
- ('extract_paused','提炼已暂停','提炼','尚无有效主题，所属处理任务已暂停、额度受限或中断。'),
- ('extract_failed','提炼失败','提炼','未取得有效主题，需查看原因并重试。'),
- ('no_topics','未提炼出适配主题','提炼','已尝试提炼，但当前没有可生文的适配主题。'),
- ('write_pending','提炼成功·待生文','生文','已有有效主题，但还没有文章成品。'),
+ ('write_pending','正文就绪·待生文','生文','素材原赛道还没有文章成品。'),
  ('write_queued','生文排队中','生文','写文任务已排队，等待并发空位。'),
  ('writing','生文中','生文','至少一篇文章正在生成，含明确发起的重生成。'),
- ('write_paused','生文已暂停','生文','种子已保存，尚未完成的写文任务已暂停或中断。'),
- ('write_failed','生文失败／部分失败','生文','至少一份当前种子的最新写文失败；成功稿继续保留。'),
+ ('write_paused','生文已暂停','生文','尚未完成的写文任务已暂停或中断。'),
+ ('write_failed','生文失败／部分失败','生文','当前素材的最新写文失败；成功稿继续保留。'),
  ('write_partial','部分生文成功','生文','已有文章，但仍有当前有效主题未生成。'),
  ('push_pending','生文成功·待推送','推送','当前主题均已生成，仍有成品未推送到当前目标。'),
  ('pushing','推送中／等待重试','推送','投递已入队，等待回执或自动重试。'),
@@ -33,7 +27,6 @@ NODES=[
 NODE_MAP={code:{'code':code,'label':label,'group':group,'description':desc} for code,label,group,desc in NODES}
 MILESTONES=[
  ('has_body','正文已验收（含后续节点）',"f.body_ready=1"),
- ('has_extraction','已提炼成功（含已生文）',"f.seed_count>0"),
  ('has_article','已有生文（含部分成功）',"f.generated_count>0"),
  ('all_written','全部主题已生文',"f.seed_count>0 AND f.generated_count=f.seed_count"),
  ('has_pushed','已有成功推送',"f.pushed_count>0"),
@@ -76,6 +69,7 @@ WITH body_ranked AS (
  FROM run_writes w JOIN runs j ON j.id=w.run_id
 ), seed_stats AS (
  SELECT e.material_id,count(*) current_seed_count,sum(e.eligible=1) seed_count,
+ sum(r.category=sm.category) source_written_count,
  sum(e.eligible=1 AND r.id IS NOT NULL) generated_count,
  sum(e.eligible=1 AND r.id IS NOT NULL AND r.deleted_at='' AND r.cleared_at='') visible_count,
  sum(e.eligible=1 AND r.id IS NOT NULL AND r.deleted_at='' AND r.cleared_at='') deliverable_count,
@@ -89,16 +83,17 @@ WITH body_ranked AS (
  sum(e.eligible=1 AND r.id IS NOT NULL AND r.deleted_at='' AND r.cleared_at='' AND p.state<>'pushed' AND p.phase IN ('queued','waiting','retry_wait')) pushing_count,
  sum(e.eligible=1 AND r.id IS NOT NULL AND r.deleted_at='' AND r.cleared_at='' AND p.state='failed' AND p.phase NOT IN ('queued','waiting','retry_wait')) push_failed_count,
  sum(e.eligible=1 AND r.id IS NOT NULL AND r.deleted_at='' AND r.cleared_at='' AND workflow_push_allowed(r.category,r.title,coalesce(nullif(r.article,''),r.short_text),r.score,r.score_status,r.score_content_hash)=0) push_blocked_count
- FROM extractions e
+ FROM extractions e JOIN materials sm ON sm.id=e.material_id
  LEFT JOIN results r ON r.extraction_id=e.id AND r.current=1
  LEFT JOIN write_ranked w ON w.extraction_id=e.id AND w.rank=1
  LEFT JOIN result_pushes p ON p.result_id=r.id AND p.target_path=workflow_push_target()
   AND p.content_hash=CASE WHEN r.id IS NOT NULL THEN result_delivery_signature(r.category,r.title,coalesce(nullif(r.article,''),r.short_text),r.score,r.score_status,r.score_content_hash) END
- WHERE e.current=1 GROUP BY e.material_id
+ WHERE e.current=1 AND (r.id IS NOT NULL OR e.extraction_mode='direct') GROUP BY e.material_id
 ), facts AS (
  SELECT m.id material_id,m.state raw_state,m.deleted_at,
  trim(m.title)='' title_missing,trim(m.body)='' body_missing,trim(m.url)='' url_missing,
  m.body_status,m.qualification='qualified' AND trim(m.title)<>'' AND trim(m.body)<>'' body_ready,
+ coalesce(s.source_written_count,0) source_written_count,
  coalesce(s.current_seed_count,0) current_seed_count,coalesce(s.seed_count,0) seed_count,
  coalesce(s.generated_count,0) generated_count,coalesce(s.visible_count,0) visible_count,
  coalesce(s.deliverable_count,0) deliverable_count,coalesce(s.archived_count,0) archived_count,
@@ -125,17 +120,11 @@ SELECT *,CASE
   WHEN body_status='failed' THEN 'body_failed'
   WHEN NOT body_missing THEN 'source_review'
   ELSE 'body_pending' END
- WHEN writing_count>0 THEN 'writing'
- WHEN item_state='running' AND job_state IN ('running','pausing') AND item_phase IN ('routing','extracting') THEN 'extracting'
- WHEN write_queued_count>0 THEN 'write_queued'
- WHEN seed_count=0 AND ((item_state='queued' AND job_state IN ('running','pausing')) OR queue_state IN ('queued','waiting','running')) THEN 'extract_queued'
- WHEN write_failed_count>0 THEN 'write_failed'
- WHEN write_paused_count>0 OR (seed_count>generated_count AND ((item_state IN ('queued','running') AND job_state IN ('paused','blocked','interrupted')) OR queue_state='paused')) THEN 'write_paused'
- WHEN seed_count=0 AND ((item_state IN ('queued','running') AND job_state IN ('paused','blocked','interrupted')) OR queue_state='paused') THEN 'extract_paused'
- WHEN seed_count=0 AND (item_state='failed' OR raw_state='failed') THEN 'extract_failed'
- WHEN seed_count=0 AND (current_seed_count>0 OR raw_state='skipped') THEN 'no_topics'
- WHEN seed_count=0 THEN 'extract_pending'
- WHEN generated_count<seed_count THEN CASE WHEN generated_count>0 THEN 'write_partial' ELSE 'write_pending' END
+ WHEN writing_count>0 OR (item_state='running' AND job_state IN ('running','pausing') AND item_phase='writing') THEN 'writing'
+ WHEN write_queued_count>0 OR (item_state='queued' AND job_state IN ('running','pausing')) OR queue_state IN ('queued','waiting','running') THEN 'write_queued'
+ WHEN write_paused_count>0 OR ((item_state IN ('queued','running') AND job_state IN ('paused','blocked','interrupted')) OR queue_state='paused') THEN 'write_paused'
+ WHEN write_failed_count>0 OR (source_written_count=0 AND (item_state='failed' OR raw_state='failed')) THEN 'write_failed'
+ WHEN source_written_count=0 THEN 'write_pending'
  WHEN deliverable_count>0 AND active_pushed_count=deliverable_count THEN 'pushed'
  WHEN pushing_count>0 THEN 'pushing'
  WHEN push_failed_count>0 THEN 'push_failed'
@@ -156,16 +145,16 @@ def install_schema(c):
 
 GROUPS=[
  {'code':'todo_body','label':'待抓正文','nodes':['body_pending']},
- {'code':'todo_extract','label':'待提炼','nodes':['extract_pending']},
  {'code':'todo_write','label':'待生文','nodes':['write_pending','write_partial']},
  {'code':'todo_push','label':'待推送','nodes':['push_pending','push_partial']},
  {'code':'done_push','label':'已推送','nodes':['pushed']},
- {'code':'workflow_failed','label':'失败待处理','nodes':['body_failed','body_truncated','extract_failed','write_failed','push_failed']},
- {'code':'workflow_paused','label':'已暂停','nodes':['body_paused','extract_paused','write_paused']},
- {'code':'workflow_active','label':'排队／执行中','nodes':['body_queued','body_fetching','extract_queued','extracting','write_queued','writing','pushing']},
+ {'code':'workflow_failed','label':'失败待处理','nodes':['body_failed','body_truncated','write_failed','push_failed']},
+ {'code':'workflow_paused','label':'已暂停','nodes':['body_paused','write_paused']},
+ {'code':'workflow_active','label':'排队／执行中','nodes':['body_queued','body_fetching','write_queued','writing','pushing']},
 ]
 
 def filter_clause(value):
+    value={'todo_extract':'todo_write','extract_pending':'write_pending','extract_queued':'write_queued','extracting':'writing','extract_paused':'write_paused','extract_failed':'write_failed','no_topics':'write_pending','has_extraction':'has_body'}.get(value,value)
     for group in GROUPS:
         if value==group['code']:return 'f.workflow_node IN ('+','.join('?' for _ in group['nodes'])+')',group['nodes']
     if value in NODE_MAP:return 'f.workflow_node=?',[value]

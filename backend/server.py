@@ -23,7 +23,7 @@ from model_queue import ModelQueue,preview as queue_preview
 from category_distribution import distribution
 import history_cleanup
 
-APP_VERSION='0.26.1'
+APP_VERSION='0.28.0'
 
 
 def main():
@@ -43,6 +43,8 @@ def main():
     store=Store(args.data,args.resources);body_fetcher=BodyFetcher(store);worker=Worker(store,body_fetcher);pusher=TitlePusher(store)
     from score_jobs import ScoreJobs,select_pending as select_pending_scores
     scorer=ScoreJobs(store,worker)
+    from prompt_lab import PromptLab
+    prompt_lab=PromptLab(store,worker)
     model_queue=ModelQueue(store,worker);model_queue.start()
     (store.root/'runtime_state.json').write_text(dumps({'version':APP_VERSION,'writing_policy':POLICY_VERSION}),encoding='utf8')
     token=os.environ.get('COMIC_WORKBENCH_TOKEN','')
@@ -67,7 +69,10 @@ def main():
                     data=json.loads(self.rfile.read(n) or b'{}')
                     if not isinstance(data,dict):raise ValueError('请求必须为对象')
                 if model_queue.draining and method=='POST' and path in ('/run/start','/run/enqueue','/run/resume','/run/retry','/run/retry-seeds','/results/regenerate','/run/queue-resume','/body/start','/body/retry','/body/resume','/body/continue-queue','/results/score-start','/results/score-resume','/results/score-retry'):raise ValueError('正在保存当前步骤后退出，暂不接受新任务；重新打开工作台后可继续')
-                if method=='GET' and path=='/health':out={'ok':True,'version':APP_VERSION,'import_dedup':'title_and_body','extraction_scheme':'adaptive_topics_v1','output_mode':'article','verification_policy':'direct_seed','writing_policy':POLICY_VERSION}
+                if method=='GET' and path=='/health':out={'ok':True,'version':APP_VERSION,'import_dedup':'title_and_body','writing_mode':'direct','output_mode':'article','writing_policy':POLICY_VERSION}
+                elif path.startswith('/prompts/test/'):
+                    if model_queue.draining and method=='POST' and path.endswith(('/start','/resume')):raise ValueError('正在保存当前步骤后退出，暂不接受新测试')
+                    out=prompt_lab.handle(method,path,q,data)
                 elif method=='GET' and path=='/stats':out=store.stats();out['scoring']=scorer.list()
                 elif method=='GET' and path=='/stats/distribution':out=distribution(store,q)
                 elif method=='GET' and path=='/run/detail':out=run_detail(store,q)
@@ -93,7 +98,6 @@ def main():
                 elif method=='POST' and path=='/run/queue-resume':out=model_queue.resume(data['id'],data)
                 elif method=='POST' and path=='/materials/workflow-summary':out=__import__('usability').workflow_summary(store,data.get('filters',{}))
                 elif method=='GET' and path=='/materials/import-summary':out=__import__('usability').import_summary(store,q['id'])
-                elif method=='GET' and path=='/materials/pending-modes':out=__import__('usability').pending_modes(store,q['id'])
                 elif method=='POST' and path=='/body/scoped-preview':
                     with body_fetcher.lock:out=__import__('usability').body_preview(store,body_fetcher,data)
                 elif method=='POST' and path=='/body/scoped-start':
@@ -160,7 +164,7 @@ def main():
                     with pusher.lock:
                         if data.get('expected_target') and data['expected_target']!=__import__('usability').push_context(store)[0]:raise ValueError('推送目标已变化，请重新核对归档范围')
                         pusher.sync();out=clear_pushed(store)
-                elif method=='GET' and path=='/prompts':out=store.prompts(q.get('category'))
+                elif method=='GET' and path=='/prompts':out=[p for p in store.prompts(q.get('category')) if p['kind']=='write']
                 elif method=='POST' and path=='/prompts/status':
                     from prompt_status import set_enabled
                     with worker.lock:out=set_enabled(store,data)
@@ -168,22 +172,19 @@ def main():
                 elif method=='GET' and path=='/settings':
                     out=store.settings();status=worker.provider.status(out);out.pop('api_key_encrypted',None);out.update(status)
                 elif method=='POST' and path=='/settings':
-                    allowed={'provider','codex_path','model','reasoning','api_base','api_model','api_protocol','batch_size','run_size','extract_variant','write_variant','allowed_categories','timeout','requirements','body_tool_path','body_workers','body_run_size','body_chunk_size','body_wait','body_delay','body_rest_every','body_rest_seconds','body_channel','body_headful','body_timeout','body_max_chars'}
+                    allowed={'provider','codex_path','model','reasoning','api_base','api_model','api_protocol','batch_size','run_size','write_variant','allowed_categories','timeout','requirements','body_tool_path','body_workers','body_run_size','body_chunk_size','body_wait','body_delay','body_rest_every','body_rest_seconds','body_channel','body_headful','body_timeout','body_max_chars'}
                     values={k:v for k,v in data.items() if k in allowed}
-                    if 'extraction_mode' in data:
-                        from extraction_modes import normalize
-                        values['extraction_mode']=normalize(data['extraction_mode'])
-                    for key in ['funny_extract_variant','funny_write_variant']:
+                    for key in ['funny_write_variant']:
                         if key in data:
                             from funny_rules import VARIANTS
                             if data[key] not in (*VARIANTS,'follow'):raise ValueError('搞笑赛道方案需为A至J或跟随全局')
                             values[key]=data[key]
-                    for key in ['military_extract_variant','military_write_variant']:
+                    for key in ['military_write_variant']:
                         if key in data:
                             from military_profile import VARIANTS as MILITARY_VARIANTS
                             if data[key] not in ('A','B',*MILITARY_VARIANTS,'follow'):raise ValueError('军事方案需为A至G或跟随全局')
                             values[key]=data[key]
-                    for key in ['process_workers','write_workers']:
+                    for key in ['write_workers']:
                         if key in data:values[key]=concurrency(data[key])
                     if any(k in data for k in ['task_request_limit','task_article_limit','task_token_limit']):
                         parsed=operations.budget({k:data.get('task_'+k,store.settings().get('task_'+k,0)) for k in ['request_limit','article_limit','token_limit']})
@@ -222,7 +223,7 @@ def main():
                     if 'body_delay' in values:
                         values['body_delay']=float(values['body_delay'])
                         if not 0<=values['body_delay']<=60:raise ValueError('抓取间隔需在0至60秒之间')
-                    for key in ['extract_variant','write_variant']:
+                    for key in ['write_variant']:
                         if key in values and values[key] not in ('A','B','alternate'):raise ValueError('规则版本仅支持A、B或交替')
                     raw_keys=data.get('api_keys',data.get('api_key'))
                     if raw_keys:

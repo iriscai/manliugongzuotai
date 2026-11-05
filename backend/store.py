@@ -123,6 +123,8 @@ class Store:
             install_military_profile(c,self.resources,now())
             from military_ip_style import install as install_military_ip
             install_military_ip(c,now())
+            from prompt_lab import install_schema as install_prompt_lab
+            install_prompt_lab(c)
             for r in c.execute("SELECT id FROM runs WHERE state NOT IN ('running','pausing') AND summary_json='' ").fetchall():pipeline.freeze_summary(c,r['id'])
             for r in c.execute("SELECT id FROM materials WHERE body_status='image' AND deleted_at=\'\'").fetchall():self.remove_material_in(c,r['id'],'image_only')
             for r in c.execute("SELECT id FROM materials WHERE body<>'' AND qualification='pending' ORDER BY id").fetchall():self.qualify_in(c,r['id'])
@@ -217,21 +219,28 @@ class Store:
 
     def save_prompt(self, payload):
         content=str(payload.get('content','')).strip()
-        if not content: raise ValueError('提示词不能为空')
+        if not content:raise ValueError('提示词不能为空')
         with self.connect() as c:
+            c.execute('BEGIN IMMEDIATE')
             old=c.execute('SELECT * FROM prompts WHERE id=?',(int(payload['id']),)).fetchone()
-            if not old: raise ValueError('规则不存在')
-            c.execute('INSERT INTO prompt_history(prompt_id,content,revision,created_at) VALUES(?,?,?,?)',(old['id'],old['content'],old['revision'],now()))
-            c.execute('UPDATE prompts SET content=?,revision=revision+1,updated_at=? WHERE id=?',(content,now(),old['id']))
-            if old['category']=='搞笑' and old['variant']=='I' and content!=old['content']:
-                if old['enabled']:c.execute('INSERT INTO prompt_status_history(prompt_id,old_enabled,new_enabled,created_at) VALUES(?,?,0,?)',(old['id'],1,now()))
-                c.execute('UPDATE prompts SET enabled=0,status_updated_at=? WHERE id=?',(now(),old['id']))
-                c.execute('INSERT OR REPLACE INTO settings VALUES(?,?)',('funny_singlecall_validation',dumps({'status':'needs_trial','note':'方案I内容已修改，需重新试跑评分达标后启用'})))
-            if old['category']=='搞笑' and old['variant']=='J' and content!=old['content']:
-                if old['enabled']:c.execute('INSERT INTO prompt_status_history(prompt_id,old_enabled,new_enabled,created_at) VALUES(?,?,0,?)',(old['id'],1,now()))
-                c.execute('UPDATE prompts SET enabled=0,status_updated_at=? WHERE id=?',(now(),old['id']))
-                c.execute('INSERT OR REPLACE INTO settings VALUES(?,?)',('funny_J_validation',dumps({'status':'needs_trial','variant':'J','note':'方案J内容已修改，需按新内容试跑评分后启用'})))
-        return {'ok':True,'note':'已保存工作台独立版本；未修改已安装SKILL或正在执行的规则快照'}
+            if not old:raise ValueError('规则不存在')
+            if 'expected_revision' in payload and old['revision']!=payload['expected_revision']:
+                raise ValueError('正式规则已被更新，请重新进入测试页核对版本后保存')
+            if 'expected_revision' not in payload or content!=old['content']:
+                self._update_prompt(c,old,content)
+        return {'ok':True}
+
+    def _update_prompt(self,c,old,content):
+        c.execute('INSERT INTO prompt_history(prompt_id,content,revision,created_at) VALUES(?,?,?,?)',(old['id'],old['content'],old['revision'],now()))
+        c.execute('UPDATE prompts SET content=?,revision=revision+1,updated_at=? WHERE id=?',(content,now(),old['id']))
+        if old['category']=='搞笑' and old['variant']=='I' and content!=old['content']:
+            if old['enabled']:c.execute('INSERT INTO prompt_status_history(prompt_id,old_enabled,new_enabled,created_at) VALUES(?,?,0,?)',(old['id'],1,now()))
+            c.execute('UPDATE prompts SET enabled=0,status_updated_at=? WHERE id=?',(now(),old['id']))
+            c.execute('INSERT OR REPLACE INTO settings VALUES(?,?)',('funny_singlecall_validation',dumps({'status':'needs_trial','note':'方案I内容已修改，需重新试跑评分达标后启用'})))
+        if old['category']=='搞笑' and old['variant']=='J' and content!=old['content']:
+            if old['enabled']:c.execute('INSERT INTO prompt_status_history(prompt_id,old_enabled,new_enabled,created_at) VALUES(?,?,0,?)',(old['id'],1,now()))
+            c.execute('UPDATE prompts SET enabled=0,status_updated_at=? WHERE id=?',(now(),old['id']))
+            c.execute('INSERT OR REPLACE INTO settings VALUES(?,?)',('funny_J_validation',dumps({'status':'needs_trial','variant':'J','note':'方案J内容已修改，需按新内容试跑评分后启用'})))
 
     @staticmethod
     def read_file(path, sheet=None):
@@ -377,7 +386,7 @@ class Store:
             from military_profile import export_html
             return export_html(self,path,ids)
         with self.connect() as c:
-            if kind=='prompts': data=self.prompts()
+            if kind=='prompts': data=[p for p in self.prompts() if p['kind']=='write']
             elif kind=='materials': data=[dict(r) for r in c.execute('SELECT * FROM materials WHERE deleted_at=\'\' ORDER BY id')]
             else:
                 if ids is not None:

@@ -10,7 +10,12 @@ def configuration_hash(store,settings,legacy=False):
     if values['provider']=='codex':
         from providers import local_config
         local=local_config();values['model']=values['model'] or local.get('model','');values['reasoning']=values['reasoning'] or local.get('reasoning','')
-    return digest(json.dumps({'settings':values,'prompts':store.prompts()},ensure_ascii=False,sort_keys=True))
+    prompts=store.prompts()
+    if values.get('extraction_mode')=='direct':
+        for key in ('extract_variant','process_workers','funny_extract_variant'):values.pop(key,None)
+        values['military_write_variant']=settings.get('military_write_variant')
+        prompts=[p for p in prompts if p['kind']=='write']
+    return digest(json.dumps({'settings':values,'prompts':prompts},ensure_ascii=False,sort_keys=True))
 
 def install_schema(c):
     cols={r[1] for r in c.execute('PRAGMA table_info(run_items)')}

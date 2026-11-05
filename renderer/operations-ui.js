@@ -4,9 +4,8 @@ const historyView={q:'',state:'',mode:'',from:'',to:'',page:1};let executionPrev
 function opsButton(text,action,attrs='',cls='btn small'){return `<button class="${cls}" data-ops="${action}" ${attrs}>${text}</button>`;}
 function taskPauseControl(task){return task.state==='running'?opsButton('暂停任务','pause-task',`data-id="${esc(task.id)}"`,'btn small danger'):task.state==='pausing'?'<button class="btn small" disabled>正在保存后暂停…</button>':'';}
 function updatePauseControls(){const button=document.querySelector('[data-ops="pause-current"]');if(!button)return;const task=activeRun()||state.stats?.scoring?.rows.find(j=>j.id===state.stats.scoring.active_id);button.disabled=!task||task.state==='pausing';button.dataset.id=task?.id||'';button.textContent=task?.state==='pausing'?'正在保存后暂停…':'暂停任务';button.title=task?'停止领取新的模型请求，在途响应保存后暂停':'当前没有运行中的模型任务';}
-function extractionModeLabel(value){return value==='single'?'1→1 同赛道':'1→N 多赛道';}
-function extractionModeField(id,value,label='提炼生文模式'){return `<div class="field"><label for="${id}">${label}</label><select id="${id}"><option value="single" ${value==='single'?'selected':''}>1→1：仅素材原赛道</option><option value="multi" ${value!=='single'?'selected':''}>1→N：多个适配赛道</option></select><small>1→1提炼一个原赛道主题；1→N由模型判断适配赛道及独立主题。可在每次执行时覆盖默认值。</small></div>`;}
-function taskBudgetFields(values={},prefix='task'){return `<div class="form-grid">${[['request_limit','本轮请求上限'],['article_limit','本轮最多生成篇数'],['token_limit','本轮已报告Token上限']].map(([k,t])=>`<div class="field"><label for="${prefix}-${k}">${t}</label><input id="${prefix}-${k}" type="number" min="0" step="1" value="${values[k]??0}"></div>`).join('')}</div><p class="hint">0表示不限。请求包含失败重试；未知Token不估算，进行中的请求可能使Token超过上限。1→1最多一篇/素材，1→N由适配主题数决定；未生成的种子保留。</p>`;}
+function extractionModeLabel(value){return value==='direct'?'原赛道直接写文':value==='single'?'历史 1→1':'历史 1→N';}
+function taskBudgetFields(values={},prefix='task'){return `<div class="form-grid">${[['request_limit','本轮请求上限'],['article_limit','本轮最多生成篇数'],['token_limit','本轮已报告Token上限']].map(([k,t])=>`<div class="field"><label for="${prefix}-${k}">${t}</label><input id="${prefix}-${k}" type="number" min="0" step="1" value="${values[k]??0}"></div>`).join('')}</div><p class="hint">0表示不限。请求包含失败重试；未知Token不估算，进行中的请求可能使Token超过上限。每条素材按原赛道写一篇。</p>`;}
 const catalogFilters=()=>({...catalogState.applied,sort_by:catalogState.sortBy,sort_dir:catalogState.sortDir});
 showStart=async function(mode='both',scope=null,ids=null,options={}){
  executionMaterialIds=ids;executionFixedFilters=options.filters||null;
@@ -16,26 +15,25 @@ showStart=async function(mode='both',scope=null,ids=null,options={}){
  const selectedCount=executionMaterialIds?executionMaterialIds.length:materialSelection.size;
  const limit=chosen==='selected'&&selectedCount?Math.min(1000,selectedCount):state.settings.run_size;
  modal(`<header><div><h2>配置执行范围</h2><p>自动核对实际领取范围，确认后启动任务。</p></div><button class="close-btn" data-action="close-modal">×</button></header><div id="execution-config">
- <div class="form-grid">${extractionModeField("run-extraction-mode",state.settings.extraction_mode||"multi")}<div class="field"><label for="run-mode">执行步骤</label><select id="run-mode"><option value="both">提炼 → 按适配赛道生文</option><option value="extract">仅提炼</option><option value="write">只写已提炼素材</option></select></div>
+ <div class="form-grid">
  <div class="field"><label for="run-scope">素材范围</label><select id="run-scope"><option value="filtered">${executionFixedFilters?'指定批次素材':'当前素材库筛选'}</option><option value="selected">勾选素材（${selectedCount}条）</option><option value="all">全库待处理素材</option></select></div>
  <div class="field"><label for="run-limit">本次最多领取素材数</label><input id="run-limit" type="number" min="1" max="1000" step="1" value="${limit}"></div>
- </div><p class="run-scope-hint">${options.label?esc(options.label)+' · ':''}本次${mode==='write'?'只写已有种子':mode==='extract'?'只提炼主题':'提炼后生成文章'}；推送在结果库单独执行。1→N的文章数量由实际适配主题决定。</p>
- <details id="execution-advanced" class="execution-advanced"><summary>高级选项 · 并发、预算与等待正文</summary><p class="hint">本次分类提炼 ${state.settings.process_workers||8} 路 · 写文 ${state.settings.write_workers||8} 路，沿用已保存配置。</p>
+ </div><p class="run-scope-hint">${options.label?esc(options.label)+' · ':''}按素材原赛道直接写文，一条素材生成一篇文章。推送在结果库单独执行。</p>
+ <details id="execution-advanced" class="execution-advanced"><summary>高级选项 · 并发、预算与等待正文</summary><p class="hint">写文并发 ${state.settings.write_workers||8} 路。</p>
  <div class="field"><label for="run-delivery">执行方式</label><select id="run-delivery"><option value="direct">直接执行（只领取合格素材）</option><option value="queue">加入队列（可等待正文抓取）</option></select></div>
  ${taskBudgetFields({request_limit:state.settings.task_request_limit,article_limit:state.settings.task_article_limit,token_limit:state.settings.task_token_limit})}</details>
- <p class="hint">仅写文使用所选模式下已保存的种子。更换模式不会转换旧种子或改写已有成品。1→1原分类为空、未知或规则未启用时会提示跳过。抓取、提炼和写文可并行运行；每条素材通过正文与去重验收后才进入提炼。加入队列只处理预览范围。抓取仍遵守单次限额，手动暂停的抓取需自行继续。</p></div>
+ <p class="hint">正文通过验收后可写文。缺少正文的素材可以加入队列等待抓取。</p></div>
  <div class="modal-actions">${opsButton('重新核对清单','preview-execution','','btn')}${opsButton('正在核对素材…','confirm-execution','disabled','btn primary')}</div><div id="execution-preview" aria-live="polite"></div>`,false);
- document.querySelector('#run-mode').value=mode==='fetch'?'both':mode;document.querySelector('#run-scope').value=chosen;if(options.extraction_mode)document.querySelector('#run-extraction-mode').value=options.extraction_mode;
+ document.querySelector('#run-scope').value=chosen;
  await previewExecution();
 };
 function executionDraft(){
- const mode=document.querySelector('#run-mode').value,scope=document.querySelector('#run-scope').value,queue=document.querySelector('#run-delivery').value==='queue';
- if(queue&&mode==='write')throw new Error('只写已提炼素材请选直接执行；等待正文队列用于完整流程或仅提炼');
+ const scope=document.querySelector('#run-scope').value,queue=document.querySelector('#run-delivery').value==='queue';
  const task_budget={};for(const k of ['request_limit','article_limit','token_limit'])task_budget[k]=Number(document.querySelector('#task-'+k).value);
  const limit=Number(document.querySelector('#run-limit').value);
  if(!Number.isInteger(limit)||limit<1||limit>1000)throw new Error('本次领取数量需为1至1000的整数');
  for(const [key,high] of [['request_limit',1000000],['article_limit',1000000],['token_limit',1000000000]])if(!Number.isInteger(task_budget[key])||task_budget[key]<0||task_budget[key]>high)throw new Error('本轮预算需填写有效非负整数，0表示不限');
- return {mode,scope,limit,extraction_mode:document.querySelector('#run-extraction-mode').value,filters:scope==='filtered'?(executionFixedFilters||catalogFilters()):{},...(scope==='selected'?{ids:executionMaterialIds||[...materialSelection]}:{}),task_budget,queue};
+ return {mode:'write',scope,limit,filters:scope==='filtered'?(executionFixedFilters||catalogFilters()):{},...(scope==='selected'?{ids:executionMaterialIds||[...materialSelection]}:{}),task_budget,queue};
 }
 async function previewExecution(){
  clearTimeout(executionPreviewTimer);
@@ -47,7 +45,7 @@ async function previewExecution(){
   const out=await api(draft.queue?'/run/queue-preview':'/run/preview',draft);
   if(revision!==executionRevision||!root.isConnected||JSON.stringify(draft)!==JSON.stringify(executionDraft()))return;
   executionPayload=draft;executionPreview=out;const excluded=out.excluded_ids||[];
-  target.innerHTML=`<div class="callout"><strong>本次实际领取 ${out.ids.length} 条素材</strong> · ${extractionModeLabel(out.extraction_mode)}${draft.queue?` · ${out.rows.filter(r=>r.waiting_body).length}条等待正文`:out.eligible_count>out.ids.length?' · 范围内另有'+num(out.eligible_count-out.ids.length)+'条留待下一轮':''}${excluded.length?' · 其余'+excluded.length+'条本轮跳过，保持原状态':''}</div>${!out.ids.length?'<p class="execution-readiness">当前没有符合所选步骤的素材。请查看下方原因，或调整执行步骤、范围；缺正文可选择“加入队列”。</p>':''}<div class="execution-list">${out.rows.map(r=>`<div><b>#${r.id}</b><span>${esc(r.title)}</span><small>${esc(r.category)}${r.waiting_body?' · 等待正文':''}</small></div>`).join('')}</div>${excluded.length?`<details class="execution-exclusions"><summary>本轮跳过 ${excluded.length} 条 · 查看原因</summary><div class="execution-list">${(out.excluded_rows||excluded.map(id=>({id,title:'',reason:'当前不符合执行条件或超出本轮数量'}))).map(r=>`<div><b>#${r.id}</b><span>${esc(r.title)}<small>${esc(r.reason)}</small></span></div>`).join('')}</div></details>`:''}`;
+  target.innerHTML=`<div class="callout"><strong>本次实际领取 ${out.ids.length} 条素材</strong> · ${extractionModeLabel(out.extraction_mode)}${draft.queue?` · ${out.rows.filter(r=>r.waiting_body).length}条等待正文`:out.eligible_count>out.ids.length?' · 范围内另有'+num(out.eligible_count-out.ids.length)+'条留待下一轮':''}${excluded.length?' · 其余'+excluded.length+'条本轮跳过，保持原状态':''}</div>${!out.ids.length?'<p class="execution-readiness">当前没有符合所选步骤的素材。请查看下方原因，或调整执行范围；缺正文可选择“加入队列”。</p>':''}<div class="execution-list">${out.rows.map(r=>`<div><b>#${r.id}</b><span>${esc(r.title)}</span><small>${esc(r.category)}${r.waiting_body?' · 等待正文':''}</small></div>`).join('')}</div>${excluded.length?`<details class="execution-exclusions"><summary>本轮跳过 ${excluded.length} 条 · 查看原因</summary><div class="execution-list">${(out.excluded_rows||excluded.map(id=>({id,title:'',reason:'当前不符合执行条件或超出本轮数量'}))).map(r=>`<div><b>#${r.id}</b><span>${esc(r.title)}<small>${esc(r.reason)}</small></span></div>`).join('')}</div></details>`:''}`;
   button.disabled=!out.ids.length;button.textContent=out.ids.length?`确认执行 ${out.ids.length} 条`:'暂无可执行素材';
   if(out.disabled_categories?.length)target.insertAdjacentHTML('afterbegin',`<p class="hint">以下赛道缺少启用的步骤规则，本轮不参与：${out.disabled_categories.map(esc).join('、')}</p>`);
  }catch(error){if(revision===executionRevision&&root.isConnected){target.innerHTML=`<p class="execution-readiness">${esc(error.message)}</p>`;button.textContent='暂不可执行';}}
@@ -69,8 +67,8 @@ async function selectedList(){
 }
 async function taskDialog(id,resume=false){
  const r=await api('/run/info?id='+encodeURIComponent(id));
- modal(`<header><div><h2>${resume?'续跑任务':'任务配置与实际用量'}</h2><p>#${esc(r.id)} · ${stateLabels[r.state]||r.state}</p></div><button class="close-btn" data-action="close-modal">×</button></header><div class="task-config-grid"><div>提炼生文模式<strong>${r.targeted_seeds?"按选中种子生文":extractionModeLabel(r.extraction_mode)}</strong></div><div>执行方式<strong>${r.provider==='api'?'中转API':'本机Codex'}</strong></div><div>实际模型<strong>${esc(r.model)}</strong></div><div>提炼 / 写文并发<strong>${r.process_workers} / ${r.write_workers}</strong></div><div>总并发上限<strong>${r.global_max_concurrency}</strong></div><div>请求数<strong>${r.usage_available?r.usage.requests:'历史未记录'}</strong></div><div>已报告Token<strong>${num(r.usage.total_tokens)} · ${r.usage.unknown_usage}次用量未知</strong></div></div>
- ${taskPauseControl(r)}<p class="hint">规则政策：${esc(r.writing_policy)}。${r.funny_paragraph_policy==='funny_natural_paragraphs_v1'?'搞笑正文自然分段，不限段数。':''}提炼容错：${r.extraction_policy==='source_category_floor_v1'?'逐项保留有效主题 + 原赛道保底':'沿用任务执行记录'}。本轮新生成${r.progress.write_completed}篇，复用${r.progress.reused}篇，失败${r.progress.write_failed}篇。</p>
+ modal(`<header><div><h2>${resume?'续跑任务':'任务配置与实际用量'}</h2><p>#${esc(r.id)} · ${stateLabels[r.state]||r.state}</p></div><button class="close-btn" data-action="close-modal">×</button></header><div class="task-config-grid"><div>写文流程<strong>${r.targeted_seeds?"重写选中文章":extractionModeLabel(r.extraction_mode)}</strong></div><div>执行方式<strong>${r.provider==='api'?'中转API':'本机Codex'}</strong></div><div>实际模型<strong>${esc(r.model)}</strong></div><div>写文并发<strong>${r.write_workers}</strong></div><div>总并发上限<strong>${r.global_max_concurrency}</strong></div><div>请求数<strong>${r.usage_available?r.usage.requests:'历史未记录'}</strong></div><div>已报告Token<strong>${num(r.usage.total_tokens)} · ${r.usage.unknown_usage}次用量未知</strong></div></div>
+ ${taskPauseControl(r)}<p class="hint">规则政策：${esc(r.writing_policy)}。${r.funny_paragraph_policy==='funny_natural_paragraphs_v1'?'搞笑正文自然分段，不限段数。':''}本轮新生成${r.progress.write_completed}篇，复用${r.progress.reused}篇，失败${r.progress.write_failed}篇。</p>
  ${resume?`<label class="ops-checkbox"><input id="resume-refresh-key" type="checkbox">使用当前保存的连接密钥（仅同一接口地址）</label><p class="hint">保留原任务的模型、规则、并发及已完成步骤；只刷新连接密钥。同接口地址不一致时会拒绝刷新。</p>${taskBudgetFields(r.task_budget,'resume-budget')}<p class="hint">额度是本轮累计上限，已完成的请求和文章不会清零。提高额度可继续未完成部分。</p>${opsButton('按以上配置续跑','confirm-resume',`data-id="${r.id}"`,'btn primary')}`:''}
  <details class="task-rules"><summary>本轮规则版本快照（${r.rule_versions.length}份）</summary><div>${r.rule_versions.map(p=>`<span>${esc(p.category)} · ${p.kind==='write'?'写文':'提炼'} ${p.variant} R${p.revision}</span>`).join('')}</div></details>`,false);
 }
@@ -96,7 +94,7 @@ render=async function(passive=false){
 async function opsAction(b){
  const a=b.dataset.ops;
  if(a==='pause-task'||a==='pause-current'){
-   const id=b.dataset.id||activeRun()?.id;if(!id)return toast('当前没有运行中的提炼或写文任务');
+   const id=b.dataset.id||activeRun()?.id;if(!id)return toast('当前没有运行中的写文任务');
    b.disabled=true;try{const r=await api('/run/pause',{id});toast(r.message);await refresh();await render();}finally{updatePauseControls();}return;
  }
  if(a==='execute-filtered'||a==='execute-selected')return showStart('both',a==='execute-selected'?'selected':'filtered');

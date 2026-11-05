@@ -65,6 +65,8 @@ def save_generated(c,result,eid,mid,rid,count,images,snapshot,variant):
     if not c.in_transaction:c.execute('BEGIN IMMEDIATE')
     from data_integrity import validate_source,allocate
     validate_source(c,mid,result['source_hash'],eid)
+    if snapshot.get('extraction_mode')=='direct' and c.execute('SELECT category FROM materials WHERE id=?',(mid,)).fetchone()[0]!=result['category']:
+        raise ValueError('素材原赛道已变更，请重新启动写文')
     old=c.execute('SELECT * FROM results WHERE extraction_id=?',(eid,)).fetchone()
     if old and old['deleted_at']:raise ValueError('文章已删除，请先恢复文章再重新生成')
     metadata=rule_metadata(snapshot,result['category'],variant)

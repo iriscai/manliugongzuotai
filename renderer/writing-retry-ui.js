@@ -22,11 +22,11 @@ async function currentWritingFailures(){
 }
 async function assertWritingRetryIdle(){
  const activity=await api('/run/activity');
- if(activity.model_active||activity.draining)throw Error('请先等待当前提炼/写文任务结束或暂停，再批量重试；正文抓取可以同时运行。');
+ if(activity.model_active||activity.draining)throw Error('请先等待当前写文任务结束或暂停，再批量重试；正文抓取可以同时运行。');
 }
 function retryWritingDialog(rows,skipped){
  const counts=new Map();rows.forEach(x=>counts.set(x.category,(counts.get(x.category)||0)+1));
- modal(`<header><div><h2>重试 ${rows.length} 篇失败写文</h2><p>仅复用这些篇目的提炼种子，使用当前启用的生文提示词。</p></div><button class="close-btn" data-action="close-modal">×</button></header><div class="callout">${skipped?`已排除 ${skipped} 篇后来已成功、状态变化或已失效的任务。`:'执行前会再次核对失败状态，已成功的篇目自动排除。'}只重试失败的赛道主题，不重新提炼，也不重跑同素材已成功的其他文章。</div><p class="hint">${[...counts].map(([k,n])=>esc(k)+' '+n+'篇').join(' · ')}<br>写文并发 ${state.settings.write_workers||8} 路，总并发上限 ${state.settings.global_max_concurrency||16} 路。沿用已配置的单轮预算和余额不足暂停规则。</p><div class="modal-actions"><button class="btn" data-action="close-modal">取消</button><button class="btn primary" data-writing-retry="confirm">确认重试 ${rows.length} 篇</button></div>`,true);
+ modal(`<header><div><h2>重试 ${rows.length} 篇失败写文</h2><p>读取这些篇目的原始正文，按原赛道使用当前写文提示词。</p></div><button class="close-btn" data-action="close-modal">×</button></header><div class="callout">${skipped?`已排除 ${skipped} 篇后来已成功、状态变化或已失效的任务。`:'执行前会再次核对失败状态，已成功的篇目自动排除。'}按原赛道重试所选篇目。</div><p class="hint">${[...counts].map(([k,n])=>esc(k)+' '+n+'篇').join(' · ')}<br>写文并发 ${state.settings.write_workers||8} 路，总并发上限 ${state.settings.global_max_concurrency||16} 路。沿用已配置的单轮预算和余额不足暂停规则。</p><div class="modal-actions"><button class="btn" data-action="close-modal">取消</button><button class="btn primary" data-writing-retry="confirm">确认重试 ${rows.length} 篇</button></div>`,true);
 }
 async function prepareWritingRetry(all){
  if(writingRetryBusy)return;writingRetryBusy=true;

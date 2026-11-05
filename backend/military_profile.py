@@ -154,6 +154,8 @@ def normalize(answer,profile=PROFILE):
 
 def prompt(rule,source,data,angle,requirements,variant='C'):
     from military_ip_style import effective_write,time_context
+    if data is None:
+        return effective_write(rule)+'\n'+time_context()+'\n固定赛道：军事。完整阅读原文，只写一篇文章。初稿、自改与终稿在同一次响应中完成。按指定JSON返回，保留draft_title/draft_article和最终title/article，edit_notes仅记实际改动，material_notes仅记真实材料缺口。category=军事，content_status=ready或needs_materials。\n用户补充要求（以本版格式为准）：'+str(requirements or '')+'\n本条原始素材：'+json.dumps(source,ensure_ascii=False)
     seed={'original_title':source['title'],'category':'军事','topic':data.get('topic') or angle,'main_point':data.get('main_point',''),
         'elements':data.get('elements',[]),'evidence':data.get('evidence',[]),'omissions':data.get('omissions',[]),'seed_origin':data.get('seed_origin','model_extraction')}
     return effective_write(rule)+'\n'+time_context()+'\n本次只返回规定JSON，保留draft_title/draft_article与最终title/article，edit_notes只写实际改动摘要，material_notes记真实材料缺口。category=军事，content_status=ready或needs_materials。生成与自改在同次响应中完成。\n历史全局补充要求仅参考不冲突的内容，不恢复旧漫画段数、标题沿用或计数HTML标签的限制：'+str(requirements or '')+'\n本组种子：'+json.dumps(seed,ensure_ascii=False)+'\n本条原始素材：'+json.dumps(source,ensure_ascii=False)

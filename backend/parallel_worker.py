@@ -18,15 +18,14 @@ class ParallelExecution:
                 run=dict(c.execute('SELECT * FROM runs WHERE id=?',(rid,)).fetchone())
                 all_items=c.execute('SELECT material_id,state FROM run_items WHERE run_id=? ORDER BY ordinal,material_id',(rid,)).fetchall()
             snapshot=json.loads(run['snapshot_json']);settings=snapshot['settings']
-            processing=concurrency(settings.get('process_workers',1));writing=concurrency(settings.get('write_workers',1))
-            self.processing_gate=threading.BoundedSemaphore(processing)
+            writing=concurrency(settings.get('write_workers',1))
             self.global_gate=threading.BoundedSemaphore(max(1,min(64,int(settings.get('global_max_concurrency',16)))))
             items=iter((index,row['material_id']) for index,row in enumerate(all_items) if row['state']=='queued')
-            s.log(f'本轮并发：分类提炼{processing}路，写文{writing}路；每条素材按依赖顺序执行。','queue',rid)
-            with ThreadPoolExecutor(max_workers=writing,thread_name_prefix='comic-write') as writers,ThreadPoolExecutor(max_workers=processing,thread_name_prefix='comic-material') as processors:
-                self.write_pool=writers;pending=set();exhausted=False
+            s.log(f'本轮写文并发{writing}路，按素材原赛道生成。','queue',rid)
+            with ThreadPoolExecutor(max_workers=writing,thread_name_prefix='comic-write') as processors:
+                pending=set();exhausted=False
                 while pending or not exhausted:
-                    while not exhausted and not self.pause_flag.is_set() and len(pending)<processing:
+                    while not exhausted and not self.pause_flag.is_set() and len(pending)<writing:
                         try:index,mid=next(items)
                         except StopIteration:exhausted=True;break
                         pending.add(processors.submit(self._process_item,mid,rid,run['mode'],snapshot,index))
@@ -75,9 +74,8 @@ class ParallelExecution:
             if isinstance(exc,ProviderLimit):
                 self.halt_for_limit(rid,exc)
             with s.connect() as c:
-                has=c.execute('SELECT count(*) FROM extractions WHERE material_id=? AND current=1',(mid,)).fetchone()[0]
                 c.execute("UPDATE run_items SET state='queued',phase='',error=? WHERE run_id=? AND material_id=?",(str(exc),rid,mid))
-                c.execute("UPDATE materials SET state=?,phase='',updated_at=? WHERE id=?",('extracted' if has else 'pending',now(),mid));self._recount_run(c,rid)
+                c.execute("UPDATE materials SET state=?,phase='',updated_at=? WHERE id=?",('pending',now(),mid));self._recount_run(c,rid)
         except Exception as exc:
             message=str(exc)[:1800]
             with s.connect() as c:

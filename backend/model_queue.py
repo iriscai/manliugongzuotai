@@ -13,20 +13,19 @@ def install_schema(c):
 def preview(store,payload):
     from material_catalog import query_parts
     from prompt_status import active_categories
-    mode=payload.get('mode','both')
-    if mode not in ('both','extract'):raise ValueError('等待正文队列仅支持完整流程或仅提炼')
-    from extraction_modes import resolve
-    settings=store.settings();extraction_mode=resolve(payload,settings)
-    settings={**settings,'extraction_mode':extraction_mode}
-    active,disabled_categories=active_categories(store.prompts(),settings,mode)
-    if not active:raise ValueError('当前范围没有启用完整规则的赛道，请先启用所需规则')
+    if payload.get('mode','write') not in ('write','both'):
+        raise ValueError('等待正文队列仅支持原赛道直接写文')
+    settings={**store.settings(),'extraction_mode':'direct'}
+    active,disabled_categories=active_categories(store.prompts(),settings,'write')
+    if not active:raise ValueError('当前范围没有启用写文提示词的赛道')
     limit=int(payload.get('limit',store.settings()['run_size']))
     if not 1<=limit<=1000:raise ValueError('每轮素材数量需为1至1000')
     scope=payload.get('scope','all');where,args,order,_,_=query_parts(payload.get('filters',{}) if scope=='filtered' else {})
     clauses=[where.removeprefix(' WHERE ')] if where else []
-    clauses.append("m.deleted_at=\'\' AND m.state NOT IN ('written','skipped','routing','extracting','writing')")
-    if extraction_mode=='single':
-        clauses.append('m.category IN ('+','.join('?' for _ in active)+')');args.extend(active)
+    clauses.append("m.deleted_at='' AND m.state NOT IN ('routing','extracting','writing')")
+    clauses.append("NOT EXISTS(SELECT 1 FROM results r WHERE r.material_id=m.id AND r.category=m.category AND r.current=1)")
+    clauses.append('m.category IN ('+','.join('?' for _ in active)+')')
+    args.extend(active)
     if scope=='selected':
         ids=payload.get('ids')
         if not isinstance(ids,list) or not ids or len(ids)>1000 or any(type(i) is not int or i<1 for i in ids):raise ValueError('请勾选1至1000条素材')
@@ -36,10 +35,10 @@ def preview(store,payload):
     if scope=='selected':rows.sort(key=lambda r:ids.index(r['id']))
     from operations import configuration_hash
     from execution_preview import excluded_rows
-    with store.connect() as c:excluded=excluded_rows(c,{**payload,'extraction_mode':extraction_mode},[r['id'] for r in rows],mode,active,queue=True)
+    with store.connect() as c:excluded=excluded_rows(c,payload,[r['id'] for r in rows],'write',active,queue=True)
     return {'ids':[r['id'] for r in rows],'rows':[{'id':r['id'],'title':r['title'],'category':r['category'],'waiting_body':r['qualification']!='qualified'} for r in rows],
       'expected_hashes':{str(r['id']):digest(r['title']+'\n'+r['body']) for r in rows},'expected_urls':{str(r['id']):digest(r['title']+'\n'+r['url']) for r in rows},
-      'config_hash':configuration_hash(store,settings),'extraction_mode':extraction_mode,'disabled_categories':disabled_categories,'excluded_ids':[i for i in payload.get('ids',[]) if i not in {r['id'] for r in rows}] if scope=='selected' else [],'excluded_rows':excluded}
+      'config_hash':configuration_hash(store,settings),'extraction_mode':'direct','disabled_categories':disabled_categories,'excluded_ids':[i for i in payload.get('ids',[]) if i not in {r['id'] for r in rows}] if scope=='selected' else [],'excluded_rows':excluded}
 
 class ModelQueue:
     def __init__(self,store,worker):self.store=store;self.worker=worker;self.stop=threading.Event();self.lock=threading.RLock();self.draining=False
@@ -53,7 +52,7 @@ class ModelQueue:
             if payload.get('expected_hashes') is not None and set(map(str,selected['ids']))!=set(payload['expected_hashes']):raise ValueError('预览范围已变化，请重新预览')
             if payload.get('expected_hashes') is not None and any(payload['expected_hashes'].get(str(i))!=selected['expected_hashes'][str(i)] for i in selected['ids']):raise ValueError('预览中的素材已变化，请重新预览')
             if payload.get('expected_urls') is not None and payload['expected_urls']!=selected['expected_urls']:raise ValueError('预览中的来源链接已变化，请重新预览')
-            jid='model_'+uuid.uuid4().hex[:12];s=self.store.settings();payload={k:v for k,v in payload.items() if k in ('mode','task_budget')};payload['task_budget']=budget(payload.get('task_budget',{}),s)
+            jid='model_'+uuid.uuid4().hex[:12];s=self.store.settings();payload={k:v for k,v in payload.items() if k=='task_budget'};payload['task_budget']=budget(payload.get('task_budget',{}),s)
             payload['extraction_mode']=selected['extraction_mode']
             payload['settings_hash']=self.settings_hash(s,payload['extraction_mode'])
             with self.store.connect() as c:
@@ -144,13 +143,13 @@ class ModelQueue:
                     articles=c.execute("SELECT count(*) FROM run_article_slots WHERE state='completed' AND run_id IN (SELECT run_id FROM model_queue_runs WHERE job_id=?)",(job['id'],)).fetchone()[0]
                 for key,value in [('request_limit',used['n']),('token_limit',used['tokens']),('article_limit',articles)]:
                     if limits.get(key):
-                        if value>=limits[key]:raise ValueError('此队列已达到本轮预算；剩余种子保留，可调整后重建队列')
+                        if value>=limits[key]:raise ValueError('此队列已达到本轮预算；剩余素材保留，可调整后重建队列')
                         limits[key]-=value
-                chosen=self.worker.start({'preview':True,'extraction_mode':payload.get('extraction_mode','multi'),'mode':payload.get('mode','both'),'scope':'selected','ids':ready,'limit':len(ready)})
+                chosen=self.worker.start({'preview':True,'mode':'write','scope':'selected','ids':ready,'limit':len(ready)})
                 if not chosen['ids']:
                     with self.store.connect() as c:c.executemany("UPDATE model_queue_items SET state='done',error='当前允许赛道已完成或不适配' WHERE job_id=? AND material_id=?",[(job['id'],i) for i in ready])
                     return
-                run=self.worker.start({'extraction_mode':payload.get('extraction_mode','multi'),'mode':payload.get('mode','both'),'scope':'selected','ids':chosen['ids'],'limit':len(chosen['ids']),'expected_hashes':chosen['expected_hashes'],'task_budget':limits})
+                run=self.worker.start({'mode':'write','scope':'selected','ids':chosen['ids'],'limit':len(chosen['ids']),'expected_hashes':chosen['expected_hashes'],'task_budget':limits})
                 with self.store.connect() as c:
                     c.execute('INSERT INTO model_queue_runs VALUES(?,?)',(job['id'],run['run_id']))
                     c.execute("UPDATE model_queue SET state='running',run_id=?,error='',updated_at=? WHERE id=?",(run['run_id'],now(),job['id']))

@@ -8,20 +8,25 @@ from paragraph_policy import effective_rule,INSTRUCTION,POLICY
 def install_schema(c):
     cols={r[1] for r in c.execute('PRAGMA table_info(results)')}
     c.execute('CREATE INDEX IF NOT EXISTS idx_extraction_direct_write ON extractions(current,eligible,material_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_results_source_category ON results(material_id,category,current)')
     if 'article' not in cols:
         c.execute("ALTER TABLE results ADD COLUMN article TEXT DEFAULT ''")
         c.execute("UPDATE results SET article=coalesce(short_text,'')")
 
 def article_prompt(rule,source,data,category,angle,requirements,variant=None):
+    direct=data is None
     if category=='军事':
         from military_profile import VARIANTS,prompt
         inferred=variant if variant in VARIANTS else next((v for v in VARIANTS if rule.startswith('军事'+v+'｜')),None)
         if inferred:return prompt(rule,source,data,angle,requirements,inferred)
+    data=data or {}
     funny=category=='搞笑'
     if funny:rule=effective_rule(rule)
     elements=data.get('elements') or [{'name':'来源元素','content':f.get('fact',''),'evidence':f.get('quote','')} for f in data.get('facts',[])]
     seed={'original_title':source.get('title',''),'category':category,'topic':data.get('topic') or angle,'main_point':data.get('main_point',''),'elements':elements,'evidence':data.get('evidence',[])}
     if category=='搞笑' and '方案J：单次响应·场景落地与口语收口' in rule:
+        if direct:
+            return INSTRUCTION+'\n'+rule+'\n固定赛道：搞笑。直接阅读原文，写一篇作品，所有修订在本次响应内完成。\n本条原始素材：'+dumps(source)+'\n用户补充要求：'+str(requirements or '')
         seed.update(seed_origin=data.get('seed_origin','model_extraction'),fallback_reason=data.get('fallback_reason',''))
         return INSTRUCTION+'\n'+rule+'\n本组种子：'+dumps(seed)+'\n本条原始素材：'+dumps(source)+'\n用户补充要求：'+str(requirements or '')
     if data.get('seed_origin')=='source_category_fallback':
@@ -34,6 +39,8 @@ def article_prompt(rule,source,data,category,angle,requirements,variant=None):
 '''+specification+'''
 本赛道写文方向：
 '''+writing_directions(rule)+'\n本组种子：'+dumps(seed)+'\n本条原始素材：'+dumps(source)+'\n用户补充要求：'+str(requirements or '')
+    if direct:
+        prompt=prompt.replace('每次只写本组选题，不混入其他组或其他素材。',f'固定赛道为{category}。完整阅读这条原始素材，直接写一篇文章。').replace('本组种子original_title','原始素材title').replace('\n本组种子：'+dumps(seed),'')
 
     from funny_singlecall import adapt_prompt
     if category=='军事':

@@ -82,6 +82,8 @@ def freeze_summary(c,rid):
 
 def overview(c):
     counts=extraction_counts(c)
+    counts['ready']=c.execute("""SELECT count(*) FROM materials m WHERE m.qualification='qualified' AND m.deleted_at=''
+        AND NOT EXISTS(SELECT 1 FROM results r WHERE r.material_id=m.id AND r.category=m.category AND r.current=1)""").fetchone()[0]
     counts['writing']=c.execute("SELECT count(*) FROM run_writes w JOIN runs r ON r.id=w.run_id WHERE w.state='writing' AND r.state IN ('running','pausing')").fetchone()[0]
     return counts
 
@@ -96,7 +98,7 @@ def run_detail(store,query):
 
 def writing_scope(query):
     state=query.get('state','')
-    where="e.current=1 AND m.deleted_at=\'\' AND coalesce(r.deleted_at,'')='' AND m.qualification='qualified' AND e.eligible=1";args=[]
+    where="e.current=1 AND m.deleted_at=\'\' AND coalesce(r.deleted_at,'')='' AND m.qualification='qualified' AND e.eligible=1 AND e.category=m.category AND (e.extraction_mode='direct' OR r.id IS NOT NULL OR w.state='failed')";args=[]
     effective="CASE WHEN w.state IN ('queued','writing') AND j.state IN ('running','pausing') THEN w.state WHEN w.state='failed' AND (r.id IS NULL OR r.content_revision<=max(1,w.base_revision)) THEN 'failed' WHEN w.state='queued' AND j.state IN ('paused','blocked','interrupted') AND (r.id IS NULL OR r.content_revision<=max(1,w.base_revision)) THEN 'paused' WHEN r.id IS NOT NULL THEN 'written' ELSE 'ready' END"
     if state=='needs_review':where+=' AND 0'
     elif state in ('ready','queued','writing','failed','written','paused'):where+=' AND ('+effective+')=?';args.append(state)

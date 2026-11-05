@@ -16,8 +16,8 @@ rules=function(){
  if(state.ruleCategory!=='军事'){militaryContext='';return beforeMilitaryRules();}
  const context='军事|'+state.ruleKind;if(context!==militaryContext){state.ruleVariant=state.settings['military_'+state.ruleKind+'_variant']||'C';militaryContext=context;}
  const lengths=Object.entries(militaryPolicies).map(([v,p])=>`${v} ${p.name}：${p.scope==='body'?'正文':'合计'}${p.min}–${p.max}字`).join('；');
- const card=`<section class="funny-profile"><strong>军事C–G · 独立版本</strong><p>事实底稿 → 对应版本选题 → 实际初稿 → 局部自改。提炼与写文各自选择、启停，保存后对新任务生效；已有任务沿用原快照。</p><p>${lengths}。HTML正文12px加粗，标点自然。成品直接报道事件、交代时间并给出个人判断；来源与核验留在内部。</p><div class="funny-profile-controls">${militaryProfileControl('extract','军事提炼方案')}${militaryProfileControl('write','军事写文方案')}<button class="btn small primary" data-military="save">保存军事执行方案</button></div></section>`;
- return beforeMilitaryRules().replace('<div class="tabs">',card+'<div class="tabs">');
+ const card=`<section class="funny-profile"><strong>军事C–G · 独立版本</strong><p>按素材原文直接生成军事稿件，初稿和自改在同一次响应中完成。</p><p>${lengths}。HTML正文12px加粗，标点自然。成品直接报道事件、交代时间并给出个人判断；来源与核验留在内部。</p><div class="funny-profile-controls">${militaryProfileControl('write','军事写文方案')}<button class="btn small primary" data-military="save">保存军事执行方案</button></div></section>`;
+ return beforeMilitaryRules().replace('<div class="prompt-status-tools">',card+'<div class="prompt-status-tools">');
 };
 const beforeMilitaryMeter=updateArticleMeter;
 updateArticleMeter=function(){
@@ -33,7 +33,7 @@ drawArticle=function(){beforeMilitaryDraw();if(!militaryRow(articleDetail))retur
  const audit=data.military_audit;if(audit&&articleTab==='read')body.insertAdjacentHTML('beforeend',`<details><summary>查看军事初稿与自改记录</summary><h3>${esc(audit.draft_title||'初稿')}</h3><div style="white-space:pre-wrap">${esc(audit.draft_article||'')}</div><h3>实际改动</h3><ul>${(audit.edit_notes||[]).map(n=>`<li>${esc(n)}</li>`).join('')}</ul><h3>材料缺口</h3><ul>${(audit.material_notes||[]).map(n=>`<li>${esc(n)}</li>`).join('')||'<li>未记录新增缺口</li>'}</ul></details>`);
 };
 document.addEventListener('click',async event=>{const b=event.target.closest('[data-military]');if(!b)return;event.stopImmediatePropagation();b.disabled=true;
- try{if(b.dataset.military==='save'){await api('/settings',{military_extract_variant:document.querySelector('#military-extract-variant').value,military_write_variant:document.querySelector('#military-write-variant').value});state.settings=await api('/settings');toast('军事执行方案已保存');}
+ try{if(b.dataset.military==='save'){await api('/settings',{military_write_variant:document.querySelector('#military-write-variant').value});state.settings=await api('/settings');toast('军事执行方案已保存');}
  else if(b.dataset.military==='export'){const path=await window.desktop.saveFile('军事HTML');if(path){await api('/export',{path,kind:'military_html',ids:[Number(b.dataset.id)]});toast('军事HTML已导出，原稿未改动');}}}
  catch(error){toast(error.message,true);}finally{if(b.isConnected)b.disabled=false;}
 });

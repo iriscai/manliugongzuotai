@@ -1,5 +1,5 @@
 // Optional operator shortcuts. Core task execution remains in the existing services.
-const operatorGroups=[['todo_body','待抓正文'],['todo_extract','待提炼'],['todo_write','待生文'],['todo_push','待推送'],['done_push','已推送'],['workflow_failed','失败待处理'],['workflow_paused','已暂停'],['workflow_active','排队／执行中']];
+const operatorGroups=[['todo_body','待抓正文'],['todo_write','待生文'],['todo_push','待推送'],['done_push','已推送'],['workflow_failed','失败待处理'],['workflow_paused','已暂停'],['workflow_active','排队／执行中']];
 const operatorCache=new Map();let operatorSummary=null,operatorSelectionRevision=0,scopedBodyContext=null,scopedBodyPreview=null,scopedBodyDraft=null,scopedBodyRevision=0,scopedBodyBusy=false;
 let scopedPushPreview=null,scopedPushContext=null,operatorLastPush='',operatorPushRunning=false,importReceipt=null,operatorArchiveTarget='',operatorReceiptMarkup='',operatorSelectionMarkup='';
 const operatorRead=(key,factory,ttl=3500)=>{const old=operatorCache.get(key);if(old&&Date.now()-old.at<ttl)return old.promise;const value={at:Date.now(),promise:factory()};operatorCache.set(key,value);value.promise.catch(()=>operatorCache.delete(key));return value.promise;};
@@ -8,7 +8,7 @@ function workflowGroupOptions(selected){return `<optgroup label="常用节点集
 function materialNextButton(x){
  const node=x.workflow_node;let label='',action='';
  if(['body_pending','body_failed','body_truncated'].includes(node)){label='获取正文';action='next-body';}
- else if(['extract_pending','extract_failed','no_topics'].includes(node)){label='提炼并生文';action='next-generate';}
+ else if(['extract_pending','extract_failed','no_topics'].includes(node)){label='按原赛道写文';action='next-generate';}
  else if(['write_pending','write_partial','write_failed'].includes(node)){label=node==='write_failed'?'查看失败写文':'继续生文';action='next-write';}
  else if(['push_pending','push_partial','push_failed'].includes(node)){label='推送文章';action='next-push';}
  else if(['push_blocked','pushed','outputs_archived'].includes(node)){label='查看成品';action='next-results';}
@@ -140,16 +140,7 @@ async function operatorAction(button){
  if(action==='body-confirm')return confirmScopedBody(button);
  if(action==='body-jobs')return navigate('bodies');
  if(action==='model-jobs')return navigate('queue');
- if(action==='next-generate')return showStart('both','selected',[id]);
- if(action==='next-write'){
-  const info=await api('/materials/pending-modes?id='+id),preferred=info.modes[state.settings.extraction_mode]?state.settings.extraction_mode:Object.keys(info.modes)[0];
-  if(info.failed.length){
-   modal(`<header><div><h2>重试素材 #${id} 的失败写文</h2><p>复用对应种子和现有重试功能，已成功篇目保留。</p></div><button class="close-btn" data-action="close-modal">×</button></header><div class="execution-list">${info.failed.map(x=>`<div><b>#${x.id}</b><span>${esc(x.category)}</span></div>`).join('')}</div><div class="modal-actions">${operatorButton('确认重试 '+info.failed.length+' 篇','next-retry-write',`data-id="${id}"`,'btn primary')}</div>`,false);return;
-  }
-  if(!preferred){await navigate('writing');return toast('请在写文任务中查看失败篇目并使用现有重试入口');}
-  return showStart('write','selected',[id],{extraction_mode:preferred,label:'仅生成本素材尚未完成的主题'});
- }
- if(action==='next-retry-write'){button.disabled=true;try{const current=await api('/materials/pending-modes?id='+id),ids=current.failed.map(x=>x.id);if(!ids.length){closeModal();return toast('失败篇目已更新，无需重复生成');}const r=await api('/run/retry-seeds',{ids});closeModal();toast('已提交本素材 '+ids.length+' 篇失败写文');await refresh();return navigate('queue');}finally{if(button.isConnected)button.disabled=false;}}
+ if(action==='next-generate'||action==='next-write')return showStart('write','selected',[id]);
  if(action==='archive-confirm'){button.disabled=true;try{const r=await api('/results/clear-pushed',{expected_target:operatorArchiveTarget});r.ids.forEach(x=>pushSelection.delete(x));closeModal();operatorCache.clear();toast('已归档 '+r.count+' 篇；素材、种子和目标标题库保留');return refresh();}finally{if(button.isConnected)button.disabled=false;}}
  if(action==='next-push')return showScopedPush({material_id:id,visibility:'active'});
  if(action==='next-results'){await navigate('results');resultView.material_id=id;return render();}
