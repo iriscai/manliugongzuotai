@@ -22,7 +22,7 @@ def main():
     for name in ['renderer','assets','resources']:shutil.copytree(ROOT/name,app/name)
     (app/'backend').mkdir();shutil.copy2(backend,app/'backend/comic-backend.exe')
     (target/'规则库').mkdir()
-    for name in ['prompt-library.json','37类_双版本提炼规则与短文提示词.md','military-C-extract.txt','military-C-write.txt']:
+    for name in ['prompt-library.json','37类_双版本提炼规则与短文提示词.md']+[p.name for p in (ROOT/'resources').glob('military-*-*.txt')]:
         if (ROOT/'resources'/name).is_file():shutil.copy2(ROOT/'resources'/name,target/'规则库'/name)
     for name in ['使用说明.md','API接入说明.md','单次多赛道提炼说明.md']:
         shutil.copy2(ROOT/name,target/name)
@@ -37,7 +37,7 @@ def main():
             counts={t:dst.execute('SELECT count(*) FROM '+t).fetchone()[0] for t in ['materials','prompts','results']}
             assert dst.execute('PRAGMA integrity_check').fetchone()[0]=='ok'
     manifest={'app':package['productName'],'version':package['version'],'exe':str(named),'data':str(data),
-        'backend_sha256':hashlib.sha256(backend.read_bytes()).hexdigest(),'counts':counts,'profile':'military_ip_C_v1',
+        'backend_sha256':hashlib.sha256(backend.read_bytes()).hexdigest(),'counts':counts,'profile':'military_ip_C_v2',
         'actual_generated_images':0,'local_release':True,'git_uploaded':False,'session_follows_data':True}
     (target/'portable-manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf8')
     print(json.dumps(manifest,ensure_ascii=False))

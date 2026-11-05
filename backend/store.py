@@ -121,6 +121,8 @@ class Store:
             install_score_jobs(c)
             from military_profile import install as install_military_profile
             install_military_profile(c,self.resources,now())
+            from military_ip_style import install as install_military_ip
+            install_military_ip(c,now())
             for r in c.execute("SELECT id FROM runs WHERE state NOT IN ('running','pausing') AND summary_json='' ").fetchall():pipeline.freeze_summary(c,r['id'])
             for r in c.execute("SELECT id FROM materials WHERE body_status='image' AND deleted_at=\'\'").fetchall():self.remove_material_in(c,r['id'],'image_only')
             for r in c.execute("SELECT id FROM materials WHERE body<>'' AND qualification='pending' ORDER BY id").fetchall():self.qualify_in(c,r['id'])

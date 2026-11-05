@@ -38,11 +38,14 @@ def compile_rules(snapshot,variant,categories=None):
         if not rule:raise ValueError(f'缺少{cat}的提炼规则{actual_variant}')
         # Keep every rule paragraph; only exact shared paragraphs are factored out.
         text=rule['content'].replace('{{source}}','[素材见统一输入]').replace('{{requirements}}','[要求见统一输入]')
+        if cat=='军事':
+            from military_ip_style import effective_extract,time_context
+            text=effective_extract(text)+'\n'+time_context()
         paragraphs=[x.strip() for x in re.split(r'\n\s*\n',text) if x.strip()]
         focus=catalog[cat]['element_focus']
-        if cat=='军事' and actual_variant=='C':
-            from military_profile import FOCUS
-            focus=FOCUS
+        if cat=='军事':
+            from military_profile import PROFILES
+            if actual_variant in PROFILES:focus=PROFILES[actual_variant]['focus']
         rules.append({'category':cat,'variant':actual_variant,'focus':focus,'paragraphs':paragraphs})
     frequencies=Counter(p for rule in rules for p in set(rule['paragraphs']))
     shared=list(dict.fromkeys(p for rule in rules for p in rule['paragraphs'] if frequencies[p]>1))

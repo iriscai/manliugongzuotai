@@ -102,19 +102,24 @@ class ParallelExecution:
             from funny_singlecall import schema_for,audit_result,mode_for,MULTISTAGE_VARIANTS
             singlecall=article_mode and x['category']=='搞笑' and variant in MULTISTAGE_VARIANTS
             schema=schema_for(variant) if singlecall else ARTICLE if article_mode else WRITE
-            from military_profile import active as military_active,SCHEMA as MILITARY_SCHEMA,PROFILE as MILITARY_PROFILE
+            from military_profile import active as military_active,schema_for,profile_for
             military=article_mode and military_active(x['category'],variant)
-            if military:schema=MILITARY_SCHEMA
+            if military:schema=schema_for(variant)
             if article_mode and x['category']=='搞笑' and not singlecall:
                 from article_quality import scored_schema
                 schema=scored_schema(schema,x['category'])
             result=self.call('write',prompt,schema,rid,mid,snapshot,f'-{eid}')
+            if x['category']=='军事':
+                from military_ip_style import validate_article
+                from military_profile import visible,body_without_sources
+                validate_article(str(result.get('title','')),body_without_sources(visible(str(result.get('article','')))))
             military_folder=None
             if military:
-                from military_profile import artifacts
+                from military_profile import artifacts,prepare_answer
                 material=s.material(mid,include_workflow=False)
-                source={'material_id':mid,'title':material['title'],'body':material['body'],'url':material['url']}
-                military_folder=artifacts(s,rid,mid,eid,source,json.loads(x['data_json']),result,snapshot)
+                source={'material_id':mid,'title':material['title'],'body':material['body'],'url':material['url'],'published_at':material.get('published_at','')}
+                result=prepare_answer(result,variant,source,json.loads(x['data_json']))
+                military_folder=artifacts(s,rid,mid,eid,source,json.loads(x['data_json']),result,snapshot,variant,x.get('rule_variant'))
             if singlecall:
                 from funny_metadata import normalize as normalize_metadata,validation_record
                 result,changes=normalize_metadata(result)
@@ -126,7 +131,7 @@ class ParallelExecution:
             else:audit=None
             quality=result.get('quality_score')
             format_metadata={key:result[key] for key in ('validation_audit','recovered_response') if key in result}
-            if article_mode:result,count,images=normalize_article(result,x['category'],MILITARY_PROFILE if military else None)
+            if article_mode:result,count,images=normalize_article(result,x['category'],profile_for(variant) if military else None)
             else:count,images=self.check_result(result)
             if military_folder:result['military_artifact_folder']=military_folder
             result.update(format_metadata)
@@ -144,7 +149,8 @@ class ParallelExecution:
                 saved=save_generated(c,result,eid,mid,rid,count,images,snapshot,variant)
                 c.execute("UPDATE run_article_slots SET state='completed' WHERE run_id=? AND extraction_id=?",(rid,eid))
                 c.execute("UPDATE run_writes SET state=?,updated_at=? WHERE run_id=? AND extraction_id=?",('completed' if saved else 'reused',now(),rid,eid))
-            s.log(f'素材#{mid} · {x["category"]} 已入结果库，标题和文章{count}/300字符。','written',rid,mid)
+            length_note=f"军事{variant}按本版篇幅验收，合计{count}可见字" if military else f'标题和文章{count}/300字符'
+            s.log(f'素材#{mid} · {x["category"]} 已入结果库，{length_note}。','written',rid,mid)
         except Exception as exc:
             state='queued' if isinstance(exc,(StepPaused,ProviderLimit)) else 'failed'
             if isinstance(exc,ProviderLimit):

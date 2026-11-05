@@ -23,7 +23,7 @@ from model_queue import ModelQueue,preview as queue_preview
 from category_distribution import distribution
 import history_cleanup
 
-APP_VERSION='0.25.0'
+APP_VERSION='0.26.1'
 
 
 def main():
@@ -180,7 +180,8 @@ def main():
                             values[key]=data[key]
                     for key in ['military_extract_variant','military_write_variant']:
                         if key in data:
-                            if data[key] not in ('A','B','C','follow'):raise ValueError('军事方案需为A、B、C或跟随全局')
+                            from military_profile import VARIANTS as MILITARY_VARIANTS
+                            if data[key] not in ('A','B',*MILITARY_VARIANTS,'follow'):raise ValueError('军事方案需为A至G或跟随全局')
                             values[key]=data[key]
                     for key in ['process_workers','write_workers']:
                         if key in data:values[key]=concurrency(data[key])

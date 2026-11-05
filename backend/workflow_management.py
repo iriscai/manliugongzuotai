@@ -13,10 +13,14 @@ def dump(value):return json.dumps(value,ensure_ascii=False)
 def rule_hash(content,category,variant,requirements=''):
     from paragraph_policy import POLICY as FUNNY_POLICY
     policy=FUNNY_POLICY if category=='搞笑' else POLICY_VERSION
-    if category=='军事' and variant=='C':
-        from military_profile import PROFILE
-        policy=PROFILE
-    return hashlib.sha256(dump([policy,content,category,variant,requirements]).encode('utf8')).hexdigest()
+    if category=='军事':
+        from military_profile import profile_for
+        policy=profile_for(variant) or policy
+    parts=[policy,content,category,variant,requirements]
+    if category=='军事':
+        from military_ip_style import signature
+        parts.append(signature())
+    return hashlib.sha256(dump(parts).encode('utf8')).hexdigest()
 
 def install_schema(c):
     columns={r[1] for r in c.execute('PRAGMA table_info(results)')}
@@ -52,9 +56,9 @@ def rule_metadata(snapshot,category,variant):
     p=next(p for p in snapshot['prompts'] if p['category']==category and p['kind']=='write' and p['variant']==variant)
     from paragraph_policy import POLICY as FUNNY_POLICY
     policy=FUNNY_POLICY if category=='搞笑' else POLICY_VERSION
-    if category=='军事' and variant=='C':
-        from military_profile import PROFILE
-        policy=PROFILE
+    if category=='军事':
+        from military_profile import profile_for
+        policy=profile_for(variant) or policy
     return {'rule_hash':rule_hash(p['content'],category,variant,snapshot['settings'].get('requirements','')),'rule_revision':p['revision'],'write_variant':variant,'writing_policy':policy}
 
 def save_generated(c,result,eid,mid,rid,count,images,snapshot,variant):
@@ -64,7 +68,7 @@ def save_generated(c,result,eid,mid,rid,count,images,snapshot,variant):
     old=c.execute('SELECT * FROM results WHERE extraction_id=?',(eid,)).fetchone()
     if old and old['deleted_at']:raise ValueError('文章已删除，请先恢复文章再重新生成')
     metadata=rule_metadata(snapshot,result['category'],variant)
-    policy=metadata['writing_policy'] if result['category']=='军事' and variant=='C' else POLICY_VERSION
+    policy=metadata['writing_policy'] if result['category']=='军事' and result.get('writing_profile') else POLICY_VERSION
     result.update(metadata,run_id=rid)
     if old:
         if eid not in snapshot.get('regenerate_seed_ids',[]):return False
@@ -183,8 +187,8 @@ def edit(store,payload):
         if not old:raise ValueError('当前文章不存在')
         old=dict(old)
         if payload.get('content_hash')!=signature(old):raise ValueError('文章已发生变化，请重新打开后修改')
-        from military_profile import row_active,PROFILE as MILITARY_PROFILE
-        value,count,images=normalize_article({'category':old['category'],'title':payload.get('title',''),'article':payload.get('article','')},old['category'],MILITARY_PROFILE if row_active(old) else None)
+        from military_profile import row_active,row_profile
+        value,count,images=normalize_article({'category':old['category'],'title':payload.get('title',''),'article':payload.get('article','')},old['category'],row_profile(old) if row_active(old) else None)
         if value['title']==old['title'] and value['article']==old['article']:return {'ok':True,'changed':False}
         archive(c,old,'手动编辑前')
         data=json.loads(old['data_json']);data.update(value,edited_at=stamp())

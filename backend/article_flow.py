@@ -13,9 +13,10 @@ def install_schema(c):
         c.execute("UPDATE results SET article=coalesce(short_text,'')")
 
 def article_prompt(rule,source,data,category,angle,requirements,variant=None):
-    if category=='军事' and (variant=='C' or rule.startswith('军事C｜')):
-        from military_profile import prompt
-        return prompt(rule,source,data,angle,requirements)
+    if category=='军事':
+        from military_profile import VARIANTS,prompt
+        inferred=variant if variant in VARIANTS else next((v for v in VARIANTS if rule.startswith('军事'+v+'｜')),None)
+        if inferred:return prompt(rule,source,data,angle,requirements,inferred)
     funny=category=='搞笑'
     if funny:rule=effective_rule(rule)
     elements=data.get('elements') or [{'name':'来源元素','content':f.get('fact',''),'evidence':f.get('quote','')} for f in data.get('facts',[])]
@@ -35,13 +36,16 @@ def article_prompt(rule,source,data,category,angle,requirements,variant=None):
 '''+writing_directions(rule)+'\n本组种子：'+dumps(seed)+'\n本条原始素材：'+dumps(source)+'\n用户补充要求：'+str(requirements or '')
 
     from funny_singlecall import adapt_prompt
+    if category=='军事':
+        from military_ip_style import effective_write,time_context
+        return effective_write(prompt)+'\n'+time_context()
     return adapt_prompt(prompt,category,rule)
 
 def normalize_article(answer,category,profile=None):
     if not isinstance(answer,dict) or answer.get('category')!=category:raise ValueError('文章成品缺少正确的所属赛道')
     if category=='军事':
-        from military_profile import PROFILE,normalize
-        if profile==PROFILE:return normalize(answer)
+        from military_profile import variant_for,normalize
+        if variant_for(profile):return normalize(answer,profile)
     title=str(answer.get('title','')).strip();article=str(answer.get('article','')).strip()
     if not title or not article:raise ValueError('文章成品缺少标题或正文')
     if len(title)>64:raise ValueError(f'作品标题共{len(title)}个字符，超过64字符上限（含标点和空格）')

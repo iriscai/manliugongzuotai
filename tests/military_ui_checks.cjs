@@ -6,7 +6,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert');const root=
  const page=await app.firstWindow(),errors=[];page.on('pageerror',e=>errors.push(e.message));await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].hide());
  await page.locator('.stat-value').first().waitFor({timeout:90000});await page.locator('[data-nav="rules"]').click();await page.locator('[data-rule-category="军事"]').click();
  await page.locator('[data-military="save"]').waitFor();assert.equal(await page.locator('#military-write-variant').inputValue(),'C');
- assert.equal(await page.locator('[data-rule-variant]').count(),3);assert((await page.locator('#prompt-content').inputValue()).includes('IP军经重构'));
+ assert.equal(await page.locator('[data-rule-variant]').count(),7);assert((await page.locator('#prompt-content').inputValue()).includes('IP军经重构'));
  await page.locator('[data-nav="results"]').click();await page.locator('.article-title').first().click();await page.locator('.military-html-preview').waitFor();
  assert.equal(await page.locator('.military-html-preview p').first().evaluate(x=>getComputedStyle(x).fontSize),'12px');
  assert.equal(await page.locator('.military-html-preview p').first().evaluate(x=>getComputedStyle(x).fontWeight),'700');
@@ -14,7 +14,7 @@ const fs=require('fs'),path=require('path'),assert=require('assert');const root=
  assert(!(await page.locator('.article-drawer').innerText()).includes('每段对应一张后续漫画画面'));
  await page.locator('[data-management="article-tab"][data-tab="edit"]').click();
  assert(!(await page.locator('#article-editor-meter').innerText()).includes('/8—15'));
- assert((await page.locator('#article-editor-meter').innerText()).includes('201–300'));
+ assert((await page.locator('#article-editor-meter').innerText()).includes('400–600'));
  await page.screenshot({path:path.join(root,'build/military-C-ui.png'),fullPage:true});assert.deepEqual(errors,[]);
  await app.close();app=null;console.log(JSON.stringify({ok:true,military_C_selectors:true,HTML_preview_12px_bold:true,editor_uses_military_constraints:true,export_button:true,external_model_calls:0,production_changes:0}));
 })().catch(async e=>{console.error(e);if(app)await app.close().catch(()=>{});process.exitCode=1;});

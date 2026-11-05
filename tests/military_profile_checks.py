@@ -7,11 +7,12 @@ from article_flow import normalize_article,article_prompt
 from workflow_management import edit
 
 TITLE='海上保障为什么要把航运这笔账算进去'
-PARTS=['这是一篇用于验证程序的模拟短评，材料说的是海上保障与运输安排，没有公布保险报价和实际运费，就不能凭空写出涨幅。把行动直接算成某家公司赚了多少，证据还差得远，先把航线能不能保持通行讲明白。',
+PARTS=['这是一篇用于验证程序的模拟短评，讨论的是海上保障与运输安排，没有公布保险报价和实际运费，就不能凭空写出涨幅。把行动直接算成某家公司赚了多少，证据还差得远，先把航线能不能保持通行讲明白。',
  '军工产业链、能源储备和外贸经济确实可以放在同一张桌上谈，但每一项联系都要有材料托着，不能把几个热词排一遍就当分析。对普通读者有用的，是谁在承担保障成本，谁需要调整运输安排，哪些影响已经发生，哪些仍只是判断。',
  '有预算就核对口径，有报价就看时间，没有这些数据就把结论收窄，不假装消息灵通。你会先关注运输能否稳定，还是先看新增成本由谁承担？']
+PARTS[1]+=('这部分仅用于验证程序保存长正文和原始初稿，不代表真实军事报道内容。'*20)[:max(0,480-sum(len(p) for p in PARTS))]
 BODY='\n\n'.join(PARTS)
-assert 201<=len((TITLE+BODY).replace('\n',''))<=300
+assert 400<=len(BODY.replace('\n',''))<=600
 ANSWER={'category':'军事','content_status':'ready','title':TITLE,'article':safe_html(BODY),'draft_title':TITLE,'draft_article':safe_html(BODY.replace('先把航线','首先把航线')),'edit_notes':['删去报幕式转接，保留原有事实范围'],'material_notes':['测试材料未给出实际报价，不新增数值']}
 class MilitaryFake(Fake):
     def call(self,prompt,schema,settings,folder,on_event=None):
@@ -30,7 +31,7 @@ class MilitaryFake(Fake):
 
 with tempfile.TemporaryDirectory(prefix='military-C-') as temp:
     root=Path(temp);s=Store(root/'data',ROOT/'resources');original_other=[p for p in s.prompts() if p['category']!='军事']
-    assert len(s.prompts('军事'))==6 and s.settings()['military_write_variant']=='C'
+    assert len(s.prompts('军事'))==14 and s.settings()['military_write_variant']=='C'
     snapshot={'settings':s.settings(),'prompts':s.prompts()}
     assert selected_variant(snapshot,'军事','write','A')=='C' and selected_variant(snapshot,'生活','write','B')=='B'
     old={**snapshot,'prompts':[p for p in snapshot['prompts'] if not(p['category']=='军事' and p['variant']=='C')]}
@@ -50,7 +51,7 @@ with tempfile.TemporaryDirectory(prefix='military-C-') as temp:
     changed=s.list_results({})['rows'][0];assert '额外成本' in changed['article'] and (folder/'0-AI初稿.md').read_bytes()==before
     assert [p for p in s.prompts() if p['category']!='军事']==original_other
     # A long title and three paragraphs are allowed only under military C.
-    custom={**ANSWER,'title':'军工保障'*18,'article':safe_html('甲'*150+'？')}
+    custom={**ANSWER,'title':'军工保障'*18,'article':safe_html('甲'*450+'。')}
     normalize_article(custom,'军事',PROFILE)
     try:normalize_article(custom,'军事');raise AssertionError('legacy military unexpectedly relaxed')
     except ValueError:pass

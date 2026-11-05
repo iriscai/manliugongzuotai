@@ -211,8 +211,9 @@ class Worker(ParallelExecution):
             from funny_metadata import output_contract
             from funny_singlecall import FUNNY_J_ARTICLE
             contract+=output_contract('J' if schema is FUNNY_J_ARTICLE else 'I')
-        from military_profile import SCHEMA as MILITARY_SCHEMA,CONTRACT as MILITARY_CONTRACT
-        if schema is MILITARY_SCHEMA:contract=MILITARY_CONTRACT
+        from military_profile import contract_for
+        military_contract=contract_for(schema)
+        if military_contract:contract=military_contract
         if 'quality_score' in schema.get('properties',{}):
             from article_quality import GRADE_INSTRUCTION
             contract+=GRADE_INSTRUCTION
@@ -288,6 +289,7 @@ class Worker(ParallelExecution):
         if m.get('qualification')!='qualified' or not m['title'].strip():raise ValueError('素材尚未完成正文与去重验收，禁止分类和生文')
         if not m['body']:raise ValueError(m.get('body_fetch_error') or '尚未取得有效正文，请先用正文抓取工具获取或手动补充')
         body=m['body'];source={'material_id':mid,'title':m['title'],'body':body,'url':m['url'],'source_category':m['category']}
+        if m['category']=='军事':source['published_at']=m.get('published_at','')
         source_hash=digest(m['title']+'\n'+body);settings=snapshot['settings'];variants={kind:('A' if (index%2==0) else 'B') if settings.get(kind+'_variant')=='alternate' else settings.get(kind+'_variant','A') for kind in ['extract','write']}
         with s.connect() as c:
             original=c.execute('SELECT source_hash FROM run_items WHERE run_id=? AND material_id=?',(rid,mid)).fetchone()
